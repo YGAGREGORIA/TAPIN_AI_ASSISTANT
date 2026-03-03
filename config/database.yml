@@ -85,20 +85,5 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  primary: &primary_production
-    <<: *default
-    database: tapin_ai_assistant_production
-    username: tapin_ai_assistant
-    password: <%= ENV["TAPIN_AI_ASSISTANT_DATABASE_PASSWORD"] %>
-  cache:
-    <<: *primary_production
-    database: tapin_ai_assistant_production_cache
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: tapin_ai_assistant_production_queue
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: tapin_ai_assistant_production_cable
-    migrations_paths: db/cable_migrate
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>
