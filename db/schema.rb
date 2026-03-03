@@ -10,8 +10,81 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 0) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_122358) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
+  create_table "check_ins", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "studio_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["studio_id"], name: "index_check_ins_on_studio_id"
+    t.index ["user_id"], name: "index_check_ins_on_user_id"
+  end
+
+  create_table "courses", force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.bigint "studio_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["studio_id"], name: "index_courses_on_studio_id"
+  end
+
+  create_table "deals", force: :cascade do |t|
+    t.boolean "active"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "studio_id", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["studio_id"], name: "index_deals_on_studio_id"
+  end
+
+  create_table "rewards", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.integer "required_checkins"
+    t.bigint "studio_id", null: false
+    t.string "type"
+    t.datetime "updated_at", null: false
+    t.index ["studio_id"], name: "index_rewards_on_studio_id"
+  end
+
+  create_table "studios", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "location"
+    t.string "name"
+    t.string "owner_email"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "user_rewards", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "progress"
+    t.boolean "redeemed"
+    t.bigint "reward_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["reward_id"], name: "index_user_rewards_on_reward_id"
+    t.index ["user_id"], name: "index_user_rewards_on_user_id"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email_address"
+    t.string "first_name"
+    t.string "last_name"
+    t.integer "phone_number"
+    t.datetime "updated_at", null: false
+  end
+
+  add_foreign_key "check_ins", "studios"
+  add_foreign_key "check_ins", "users"
+  add_foreign_key "courses", "studios"
+  add_foreign_key "deals", "studios"
+  add_foreign_key "rewards", "studios"
+  add_foreign_key "user_rewards", "rewards"
+  add_foreign_key "user_rewards", "users"
 end
