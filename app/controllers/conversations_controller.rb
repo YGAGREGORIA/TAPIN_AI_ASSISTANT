@@ -37,7 +37,7 @@ class ConversationsController < ApplicationController
 
     @chat.messages.create!(role: "user", content: user_text)
 
-    assistant_text = "Got it. You said: #{user_text}"
+    assistant_text = ChatAiService.new(chat: @chat).reply
     @chat.messages.create!(role: "assistant", content: assistant_text)
 
     render json: { assistant: assistant_text }
