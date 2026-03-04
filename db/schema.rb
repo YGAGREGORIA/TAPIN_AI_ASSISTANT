@@ -69,8 +69,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
     t.datetime "created_at", null: false
     t.string "name"
     t.integer "required_checkins"
+    t.string "reward_type"
     t.bigint "studio_id", null: false
-    t.string "type"
     t.datetime "updated_at", null: false
     t.index ["studio_id"], name: "index_rewards_on_studio_id"
   end
@@ -104,9 +104,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
+    t.string "role", default: "customer", null: false
+    t.bigint "studio_id"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["studio_id"], name: "index_users_on_studio_id"
   end
 
   add_foreign_key "chats", "studios"
@@ -119,4 +122,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
   add_foreign_key "rewards", "studios"
   add_foreign_key "user_rewards", "rewards"
   add_foreign_key "user_rewards", "users"
+  add_foreign_key "users", "studios"
 end
