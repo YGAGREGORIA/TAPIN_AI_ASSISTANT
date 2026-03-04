@@ -62,19 +62,12 @@
               placeholder="Type your message..."
               autocomplete="off"
               data-chat-shell-target="input"
-              <%= @chat.present? ? "" : "disabled" %>
             >
 
-            <button type="submit" class="btn btn-primary" <%= @chat.present? ? "" : "disabled" %>>
+            <button type="submit" class="btn btn-primary">
               Send
             </button>
           </form>
-
-          <% unless @chat.present? %>
-            <div class="text-muted small mt-2">
-              Create a new chat first.
-            </div>
-          <% end %>
         </div>
       </div>
     </div>
@@ -113,8 +106,8 @@
         <% @chats.each_with_index do |chat, i| %>
           <%= link_to conversation_path(chat.id),
                 class: "list-group-item list-group-item-action d-flex justify-content-between align-items-center #{(@chat && chat.id == @chat.id) ? 'active' : ''}" do %>
-            <span class="text-truncate" style="max-width: 260px;">Chat <%= i + 1 %></span>
-            <span class="text-muted small">›</span>
+                <span class="text-truncate" style="max-width: 260px;"><%= chat.title.presence || "Chat #{i + 1}" %></span>
+                <span class="text-muted small">›</span>
           <% end %>
         <% end %>
       <% else %>
