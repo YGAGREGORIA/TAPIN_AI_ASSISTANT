@@ -10,9 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_04_072035) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "chats", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "status"
+    t.bigint "studio_id", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["studio_id"], name: "index_chats_on_studio_id"
+    t.index ["user_id"], name: "index_chats_on_user_id"
+  end
 
   create_table "check_ins", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -40,6 +51,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_072035) do
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["studio_id"], name: "index_deals_on_studio_id"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.bigint "chat_id", null: false
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.string "role"
+    t.string "sentiment"
+    t.text "summary"
+    t.string "tag"
+    t.datetime "updated_at", null: false
+    t.index ["chat_id"], name: "index_messages_on_chat_id"
   end
 
   create_table "rewards", force: :cascade do |t|
@@ -89,10 +112,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_072035) do
     t.index ["studio_id"], name: "index_users_on_studio_id"
   end
 
+  add_foreign_key "chats", "studios"
+  add_foreign_key "chats", "users"
   add_foreign_key "check_ins", "studios"
   add_foreign_key "check_ins", "users"
   add_foreign_key "courses", "studios"
   add_foreign_key "deals", "studios"
+  add_foreign_key "messages", "chats"
   add_foreign_key "rewards", "studios"
   add_foreign_key "user_rewards", "rewards"
   add_foreign_key "user_rewards", "users"
