@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   devise_for :users
-  root to: "pages#home"
+  # Logged-in users go to dashboard; guests see Devise sign-in
+  authenticated :user do
+    root to: "customer/dashboards#show", as: :authenticated_root
+  end
+  root to: redirect("/users/sign_in")
 
   namespace :customer do
     resource :dashboard, only: [:show]
