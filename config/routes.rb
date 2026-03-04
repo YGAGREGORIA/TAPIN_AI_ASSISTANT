@@ -21,4 +21,3 @@ resources :conversations, only: [:index, :show, :create] do
 
   # Defines the root path route ("/")
   # root "posts#index"
-end
