@@ -1,9 +1,13 @@
 Rails.application.routes.draw do
+  namespace :customer do
+    get "messages/create"
+  end
   devise_for :users
   root to: "pages#home"
 
 resources :conversations, only: [:index, :show, :create] do
-    post :reply, on: :member
+    resources :messages, only: [:create]
+  end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
