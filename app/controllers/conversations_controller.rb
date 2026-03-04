@@ -1,6 +1,6 @@
 class ConversationsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_chat, only: [:show, :reply]
+  before_action :set_chat, only: %i[show reply]
 
   def index
     @chats = current_user.chats.order(created_at: :asc)
@@ -14,9 +14,18 @@ class ConversationsController < ApplicationController
   def create
     studio = Studio.find_by(owner_email: current_user.email) || Studio.first
 
+    # Falls kein Studio existiert:
+    if studio.nil?
+      redirect_to root_path, alert: "Kein Studio gefunden."
+      return
+    end
+
+    count = current_user.chats.count + 1
+
     chat = current_user.chats.create!(
       studio: studio,
-      status: "active"
+      status: "active",
+      title: "Chat #{count}"
     )
 
     redirect_to conversation_path(chat.id)
