@@ -1,14 +1,12 @@
 Rails.application.routes.draw do
-  namespace :customer do
-    get "messages/create"
-  end
+
   devise_for :users
   root to: "pages#home"
 
 resources :conversations, only: [:index, :show, :create] do
-    resources :messages, only: [:create]
-  end
-  end
+  resources :messages, only: [:create]
+end
+end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
