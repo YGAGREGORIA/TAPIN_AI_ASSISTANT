@@ -1,42 +1,24 @@
-class Customer::MessagesController < ApplicationController
-  before_action :set_conversation
+class MessagesController < ApplicationController
+  before_action :authenticate_user!
 
   SYSTEM_PROMPT = <<~PROMPT
-  You are the TAPIN AI assistant.
-
-  TAPIN is a fitness loyalty platform.
-  Users earn points when they check into classes.
-
-  You help users with:
-  - check-ins
-  - rewards
-  - tier and points
-  - class recommendations
-  - deals
-  - class schedules
-
-  Answer clearly and briefly.
+    You are the TAPIN AI assistant helping users with
+    check-ins, rewards, loyalty tiers, classes and deals.
   PROMPT
 
   def create
-    chat = current_user.chats.find(params[:conversation_id])
-    user_text = params[:message].to_s.strip
+    @chat = current_user.chats.find(params[:conversation_id])
 
-    return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?
+    user_text = params[:message]
 
+    # save user message
+    Message.create!(role: "user", content: user_text, chat: @chat)
 
-    chat.messages.create!(
-      role: "user",
-      content: user_text
-    )
-
+    # generate response
     assistant_text = generate_ai_response(user_text)
 
-
-    chat.messages.create!(
-      role: "assistant",
-      content: assistant_text
-    )
+    # save assistant message
+    Message.create!(role: "assistant", content: assistant_text, chat: @chat)
 
     render json: { assistant: assistant_text }
   end
@@ -52,24 +34,19 @@ class Customer::MessagesController < ApplicationController
 
     elsif text.include?("reward")
       rewards = Reward.limit(3).pluck(:name)
-      "You can unlock rewards like: #{rewards.join(", ")}."
-
-    elsif text.include?("tier") || text.include?("points")
-      points = current_user.points || 0
-      tier = current_user.tier || "Bronze"
-      "You are currently in the #{tier} tier with #{points} points."
+      "You can unlock rewards like: #{rewards.join(', ')}."
 
     elsif text.include?("recommend") && text.include?("class")
       classes = Course.limit(3).pluck(:name)
-      "Recommended classes: #{classes.join(", ")}."
+      "Recommended classes: #{classes.join(', ')}."
 
     elsif text.include?("deal")
       deals = Deal.limit(3).pluck(:title)
-      "Here are some deals: #{deals.join(", ")}."
+      "Here are some deals: #{deals.join(', ')}."
 
     elsif text.include?("schedule")
       classes = Course.limit(3).pluck(:name)
-      "Upcoming classes: #{classes.join(", ")}."
+      "Upcoming classes: #{classes.join(', ')}."
 
     else
       call_openai(user_text)
@@ -77,18 +54,12 @@ class Customer::MessagesController < ApplicationController
   end
 
   def call_openai(user_text)
-    client = OpenAI::Client.new
+    ruby_llm_chat = RubyLLM.chat(model: "gpt-4o-mini")
 
-    response = client.chat(
-      parameters: {
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: user_text }
-        ]
-      }
-    )
+    response = ruby_llm_chat
+               .with_instructions(SYSTEM_PROMPT)
+               .ask(user_text)
 
-    response.dig("choices", 0, "message", "content")
+    response.content
   end
 end

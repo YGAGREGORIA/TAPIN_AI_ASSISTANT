@@ -48,7 +48,7 @@ gem "sassc-rails"
 gem "ruby-openai"
 
 gem "devise"
-
+gem "ruby_llm"
 group :development, :test do
   gem "dotenv-rails"
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
