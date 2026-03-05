@@ -1,16 +1,44 @@
- <div
-  class="container-fluid py-3"
-  data-controller="chat-shell"
-  data-chat-shell-chat-id-value="<%= @chat.id if @chat %>"
->
-  <div class="d-flex align-items-center gap-2 mb-3">
-    <button type="button" class="btn btn-outline-primary" data-action="click->chat-shell#openSidebar">
-      History
-    </button>
+<div class="container py-4" style="max-width: 720px;">
 
-    <div class="ms-auto">
-      <%= button_to "New chat", chats_path, method: :post, class: "btn btn-primary" %>
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="mb-0 fw-bold">Your conversations</h4>
+      <p class="text-muted mb-0 small">Chat with your TapIn AI assistant</p>
     </div>
+    <%= button_to chats_path, method: :post, class: "btn btn-primary rounded-pill" do %>
+      <i class="fas fa-plus me-1"></i> New chat
+    <% end %>
   </div>
 
- 
+  <% if @chats.present? %>
+    <div class="d-flex flex-column">
+      <% @chats.reverse.each do |chat| %>
+        <%= link_to chat_path(chat), class: "text-decoration-none" do %>
+          <div class="chat-list-item bg-white p-3 d-flex align-items-center gap-3">
+            <div class="chat-avatar chat-avatar-ai flex-shrink-0" style="width:40px;height:40px;font-size:0.8rem;">AI</div>
+            <div class="flex-grow-1 min-width-0">
+              <div class="fw-semibold text-dark"><%= chat.title %></div>
+              <% last_msg = chat.messages.order(created_at: :desc).first %>
+              <% if last_msg %>
+                <div class="text-muted small text-truncate"><%= truncate(last_msg.content, length: 80) %></div>
+              <% else %>
+                <div class="text-muted small">No messages yet</div>
+              <% end %>
+            </div>
+            <div class="text-muted small flex-shrink-0"><%= time_ago_in_words(chat.updated_at) %></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-5">
+      <div class="chat-avatar chat-avatar-ai mx-auto mb-3" style="width:56px;height:56px;font-size:1.1rem;">AI</div>
+      <h5 class="fw-bold">Start your first conversation</h5>
+      <p class="text-muted mb-4">Ask about check-ins, rewards, classes, deals, and more.</p>
+      <%= button_to chats_path, method: :post, class: "btn btn-primary btn-lg rounded-pill" do %>
+        <i class="fas fa-comment-dots me-2"></i> Start chatting
+      <% end %>
+    </div>
+  <% end %>
+
+</div>
