@@ -1,11 +1,18 @@
 Rails.application.routes.draw do
-  devise_for :users
-  root to: "pages#home"
+ devise_for :users
+  # Logged-in users go to dashboard; guests see Devise sign-in
+  authenticated :user do
+    root to: "customer/dashboards#show", as: :authenticated_root
+  end
+  root to: redirect("/users/sign_in")
 
-resources :chats, only: [:index, :show, :create] do
-  resources :messages, only: [:create]
-end
+  namespace :customer do
+    resource :dashboard, only: [:show]
+  end
 
+  resources :chats, only: [:index, :show, :create] do
+    resources :messages, only: [:create]
+  end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
