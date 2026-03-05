@@ -1,30 +1,21 @@
-class ConversationsController < ApplicationController
+class ChatsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_chat, only: [:show]
 
   def index
     @chats = current_user.chats.order(created_at: :asc)
-
-    # load last chat if it exists
-    @chat = @chats.last
-
-    # load messages only if chat exists
-    @messages = @chat.messages.order(created_at: :asc) if @chat
   end
 
   def show
     @chats = current_user.chats.order(created_at: :asc)
     @messages = @chat.messages.order(created_at: :asc)
-
-    # reuse the index UI
-    render :index
   end
 
   def create
-    studio = Studio.find_by(owner_email: current_user.email) || Studio.first
+    studio = current_user.studios.first
 
     unless studio
-      redirect_to root_path, alert: "Kein Studio gefunden."
+      redirect_to root_path, alert: "No studio found"
       return
     end
 
@@ -34,7 +25,7 @@ class ConversationsController < ApplicationController
       title: "Chat #{current_user.chats.count + 1}"
     )
 
-    redirect_to conversation_path(chat)
+    redirect_to chat_path(chat)
   end
 
   private

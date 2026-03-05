@@ -7,7 +7,7 @@ class MessagesController < ApplicationController
   PROMPT
 
   def create
-    @chat = current_user.chats.find(params[:conversation_id])
+    @chat = current_user.chats.find(params[:chat_id])
 
     user_text = params[:message].to_s.strip
     return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?

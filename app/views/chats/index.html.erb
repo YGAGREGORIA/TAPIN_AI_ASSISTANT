@@ -1,7 +1,7 @@
-<div
+ <div
   class="container-fluid py-3"
   data-controller="chat-shell"
-  data-chat-shell-conversation-id-value="<%= @chat&.id %>"
+  data-chat-shell-chat-id-value="<%= @chat.id if @chat %>"
 >
   <div class="d-flex align-items-center gap-2 mb-3">
     <button type="button" class="btn btn-outline-primary" data-action="click->chat-shell#openSidebar">
@@ -9,7 +9,7 @@
     </button>
 
     <div class="ms-auto">
-      <%= button_to "New chat", conversations_path, method: :post, class: "btn btn-primary" %>
+      <%= button_to "New chat", chats_path, method: :post, class: "btn btn-primary" %>
     </div>
   </div>
 
@@ -101,10 +101,10 @@
       <input class="form-control mb-2" placeholder="Search..." data-chat-shell-target="search">
     </div>
 
-    <div class="list-group list-group-flush overflow-auto" style="height: calc(100% - 130px);" data-chat-shell-target="list">
+   <div class="list-group list-group-flush overflow-auto" style="height: calc(100% - 130px);" data-chat-shell-target="list">
       <% if defined?(@chats) && @chats.present? %>
         <% @chats.each_with_index do |chat, i| %>
-          <%= link_to conversation_path(chat.id),
+          <%= link_to chat_path(chat),
                 class: "list-group-item list-group-item-action d-flex justify-content-between align-items-center #{(@chat && chat.id == @chat.id) ? 'active' : ''}" do %>
                 <span class="text-truncate" style="max-width: 260px;"><%= chat.title.presence || "Chat #{i + 1}" %></span>
                 <span class="text-muted small">›</span>

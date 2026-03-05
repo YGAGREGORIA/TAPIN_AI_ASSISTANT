@@ -23,7 +23,7 @@
         </li>
 
         <li class="nav-item">
-          <%= link_to "AI Assistant", conversations_path, class: "nav-link #{'active' if request.path.start_with?('/conversations')}" %>
+          <%= link_to "AI Assistant", chats_path, class: "nav-link #{'active' if request.path.start_with?('/chats')}" %>
         </li>
       </ul>
 
@@ -44,7 +44,7 @@
 
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
               <li>
-                <%= link_to "My chats", conversations_path, class: "dropdown-item" %>
+                <%= link_to "My chats", chats_path, class: "dropdown-item" %>
               </li>
 
               <li><hr class="dropdown-divider"></li>

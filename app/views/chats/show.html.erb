@@ -1,0 +1,120 @@
+ <div
+  class="container-fluid py-3"
+  data-controller="chat-shell"
+  data-chat-shell-chat-id-value="<%= @chat.id if @chat %>"
+>
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <button type="button" class="btn btn-outline-primary" data-action="click->chat-shell#openSidebar">
+      History
+    </button>
+
+    <div class="ms-auto">
+      <%= button_to "New chat", chats_path, method: :post, class: "btn btn-primary" %>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-8 mx-auto">
+      <div class="card shadow-sm rounded-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-primary">AI</span>
+            <span><%= @chat.present? ? "Chat" : "Conversation" %></span>
+          </div>
+        </div>
+
+        <div
+          class="card-body overflow-auto"
+          style="height: 520px; background: #f8f9fa;"
+          data-chat-shell-target="messages"
+        >
+          <% if defined?(@messages) && @messages.present? %>
+            <% @messages.each do |m| %>
+              <% if m.role == "user" %>
+                <div class="d-flex justify-content-end mb-2">
+                  <div class="bg-primary text-white rounded-4 px-3 py-2 shadow-sm" style="max-width: 85%;">
+                    <%= m.content %>
+                  </div>
+                </div>
+              <% else %>
+                <div class="d-flex justify-content-start mb-2">
+                  <div class="bg-white border rounded-4 px-3 py-2 shadow-sm" style="max-width: 85%;">
+                    <%= m.content %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          <% else %>
+            <div class="d-flex mb-2">
+              <div class="bg-white border rounded-4 px-3 py-2 shadow-sm" style="max-width: 85%;">
+                Hi. How can I help?
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="card-footer bg-white">
+          <form class="d-flex gap-2" data-action="submit->chat-shell#send">
+            <input
+              type="text"
+              name="message"
+              class="form-control"
+              placeholder="Type your message..."
+              autocomplete="off"
+              data-chat-shell-target="input"
+            >
+
+            <button type="submit" class="btn btn-primary">
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"
+    style="z-index: 1060;"
+    data-chat-shell-target="overlay"
+    data-action="click->chat-shell#closeSidebar"
+    hidden
+  ></div>
+
+  <aside
+    class="position-fixed top-0 start-0 bg-white h-100 shadow-lg"
+    style="width: 360px; z-index: 1061; transform: translateX(-100%); transition: transform .2s ease;"
+    data-chat-shell-target="sidebar"
+  >
+    <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+      <div>
+        <div class="text-muted small">Conversation history</div>
+        <div class="fw-semibold">Your chats</div>
+      </div>
+
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="click->chat-shell#closeSidebar">
+        x
+      </button>
+    </div>
+
+    <div class="p-2">
+      <input class="form-control mb-2" placeholder="Search..." data-chat-shell-target="search">
+    </div>
+
+   <div class="list-group list-group-flush overflow-auto" style="height: calc(100% - 130px);" data-chat-shell-target="list">
+      <% if defined?(@chats) && @chats.present? %>
+        <% @chats.each_with_index do |chat, i| %>
+          <%= link_to chat_path(chat),
+                class: "list-group-item list-group-item-action d-flex justify-content-between align-items-center #{(@chat && chat.id == @chat.id) ? 'active' : ''}" do %>
+                <span class="text-truncate" style="max-width: 260px;"><%= chat.title.presence || "Chat #{i + 1}" %></span>
+                <span class="text-muted small">›</span>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="p-3 text-muted">
+          No chats yet.
+        </div>
+      <% end %>
+    </div>
+  </aside>
+</div>
