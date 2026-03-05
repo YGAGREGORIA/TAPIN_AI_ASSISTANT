@@ -10,8 +10,8 @@ Rails.application.routes.draw do
     resource :dashboard, only: [:show]
   end
 
-  resources :conversations, only: [:index, :show, :create] do
-    post :reply, on: :member
+  resources :chats, only: [:index, :show, :create] do
+    resources :messages, only: [:create]
   end
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

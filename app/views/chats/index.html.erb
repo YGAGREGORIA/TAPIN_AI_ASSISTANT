@@ -1,0 +1,16 @@
+ <div
+  class="container-fluid py-3"
+  data-controller="chat-shell"
+  data-chat-shell-chat-id-value="<%= @chat.id if @chat %>"
+>
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <button type="button" class="btn btn-outline-primary" data-action="click->chat-shell#openSidebar">
+      History
+    </button>
+
+    <div class="ms-auto">
+      <%= button_to "New chat", chats_path, method: :post, class: "btn btn-primary" %>
+    </div>
+  </div>
+
+ 

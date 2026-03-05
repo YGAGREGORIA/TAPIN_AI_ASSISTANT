@@ -1,30 +1,33 @@
-puts "Cleaning database..."
-UserReward.destroy_all
-CheckIn.destroy_all
-Course.destroy_all
-Deal.destroy_all
-Reward.destroy_all
-User.destroy_all
-Studio.destroy_all
+puts "Seeding..."
 
-puts "Creating studio..."
-studio = Studio.create!(
-  name: "Zenith Fitness Studio",
-  owner_email: "admin@zenith.com",
-  location: "123 Main St, Amsterdam"
-)
+# --- Studio ---
+studio = Studio.find_or_create_by!(name: "TAPIN Studio") do |s|
+  s.location = "Hamburg"
+  s.owner_email = "admin@tapin.com"
+end
 
-puts "Creating admin user..."
-User.create!(
-  email: "admin@zenith.com",
-  password: "password",
-  first_name: "Studio",
-  last_name: "Owner",
-  role: "admin",
-  studio: studio
-)
+# --- Admin user ---
+admin = User.find_or_create_by!(email: "admin@tapin.com") do |u|
+  u.password = "password123"
+  u.password_confirmation = "password123"
+  u.first_name = "Studio"
+  u.last_name = "Owner"
+  u.role = "admin"
+  u.studio = studio
+end
 
-puts "Creating customers..."
+# --- Demo customer ---
+demo = User.find_or_create_by!(email: "demo@gmail.com") do |u|
+  u.password = "password123"
+  u.password_confirmation = "password123"
+  u.first_name = "Demo"
+  u.last_name = "User"
+  u.phone_number = 49123456
+  u.role = "customer"
+  u.studio = studio
+end
+
+# --- Additional customers (varied check-in patterns for admin tools) ---
 customers_data = [
   { first_name: "Alice",   last_name: "Johnson", email: "alice@example.com",   checkins: 25, last_checkin_days_ago: 2 },
   { first_name: "Bob",     last_name: "Smith",   email: "bob@example.com",     checkins: 40, last_checkin_days_ago: 1 },
@@ -37,59 +40,92 @@ customers_data = [
 ]
 
 customers = customers_data.map do |data|
-  user = User.create!(
-    email: data[:email],
-    password: "password",
-    first_name: data[:first_name],
-    last_name: data[:last_name],
-    role: "customer",
-    studio: studio
-  )
+  user = User.find_or_create_by!(email: data[:email]) do |u|
+    u.password = "password123"
+    u.password_confirmation = "password123"
+    u.first_name = data[:first_name]
+    u.last_name = data[:last_name]
+    u.role = "customer"
+    u.studio = studio
+  end
 
-  data[:checkins].times do
-    CheckIn.create!(
-      user: user,
-      studio: studio,
-      created_at: rand(data[:last_checkin_days_ago]..180).days.ago
-    )
+  if user.check_ins.where(studio: studio).count == 0
+    data[:checkins].times do
+      CheckIn.create!(
+        user: user,
+        studio: studio,
+        created_at: rand(data[:last_checkin_days_ago]..180).days.ago
+      )
+    end
   end
 
   user
 end
 
-puts "Creating courses..."
+# Demo user check-ins
+existing = CheckIn.where(user: demo, studio: studio).count
+[5 - existing, 0].max.times { CheckIn.create!(user: demo, studio: studio) }
+
+# --- Courses ---
 [
-  { name: "Yoga Flow",   category: "Mind-Body" },
-  { name: "Spin Class",  category: "Cardio" },
-  { name: "HIIT",        category: "Cardio" },
-  { name: "Pilates",     category: "Mind-Body" },
-  { name: "Boxing",      category: "Strength" },
-  { name: "Meditation",  category: "Mind-Body" }
-].each { |c| Course.create!(studio: studio, **c) }
-
-puts "Creating deals..."
-Deal.create!(studio: studio, title: "50% Off First Month", description: "New members get half off their first month", active: true)
-Deal.create!(studio: studio, title: "Bring a Friend Week", description: "Bring a friend free all this week", active: true)
-Deal.create!(studio: studio, title: "Summer Special", description: "Summer unlimited pass at 30% off", active: false)
-
-puts "Creating rewards..."
-bronze     = Reward.create!(studio: studio, name: "Bronze Badge", reward_type: "badge", required_checkins: 10)
-silver     = Reward.create!(studio: studio, name: "Silver Badge", reward_type: "badge", required_checkins: 25)
-gold       = Reward.create!(studio: studio, name: "Gold Badge",   reward_type: "badge", required_checkins: 50)
-free_class = Reward.create!(studio: studio, name: "Free Class",   reward_type: "perk",  required_checkins: 15)
-
-puts "Creating user rewards..."
-customers.each do |user|
-  checkin_count = user.check_ins.count
-  [bronze, silver, gold, free_class].each do |reward|
-    progress = [checkin_count, reward.required_checkins].min
-    UserReward.create!(
-      user: user,
-      reward: reward,
-      progress: progress,
-      redeemed: progress >= reward.required_checkins
-    )
+  ["HIIT Express", "fitness"],
+  ["Yoga Flow", "mind-body"],
+  ["Boxing Basics", "combat"],
+  ["Pilates", "mind-body"],
+  ["Spin Class", "cardio"],
+  ["Meditation", "mind-body"]
+].each do |name, category|
+  Course.find_or_create_by!(studio: studio, name: name) do |c|
+    c.category = category
   end
 end
 
-puts "Seeded: #{Studio.count} studios, #{User.count} users, #{CheckIn.count} check-ins, #{Course.count} courses, #{Deal.count} deals, #{Reward.count} rewards, #{UserReward.count} user_rewards"
+# --- Deals ---
+[
+  ["2-for-1 Trial Week", "Bring a friend and train together this week.", true],
+  ["10% off Monthly", "Save 10% on your first monthly membership.", true],
+  ["Free Protein Shake", "Get one free shake after your next class.", false]
+].each do |title, description, active|
+  Deal.find_or_create_by!(studio: studio, title: title) do |d|
+    d.description = description
+    d.active = active
+  end
+end
+
+# --- Rewards ---
+rewards = [
+  ["Free Class", "perk", 3],
+  ["Free Smoothie", "perk", 5],
+  ["Bronze Badge", "badge", 10],
+  ["Silver Badge", "badge", 25],
+  ["Gold Badge", "badge", 50]
+].map do |name, rtype, required|
+  Reward.find_or_create_by!(studio: studio, name: name) do |r|
+    r.reward_type = rtype
+    r.required_checkins = required
+  end
+end
+
+# --- User rewards (progress tracking) ---
+customers.each do |user|
+  checkin_count = user.check_ins.count
+  rewards.each do |reward|
+    UserReward.find_or_create_by!(user: user, reward: reward) do |ur|
+      ur.progress = [checkin_count, reward.required_checkins].min
+      ur.redeemed = checkin_count >= reward.required_checkins
+    end
+  end
+end
+
+# --- Chat + Messages (demo conversation) ---
+chat = Chat.order(created_at: :desc).find_by(user: demo, studio: studio) ||
+       Chat.create!(user: demo, studio: studio, title: "Chat 1")
+Message.find_or_create_by!(chat: chat, role: "assistant", content: "Hi! How can I help?")
+Message.find_or_create_by!(chat: chat, role: "user", content: "Show me my check-ins")
+Message.find_or_create_by!(chat: chat, role: "assistant", content: "You have #{CheckIn.where(user: demo).count} check-ins.")
+
+puts "Seed complete!"
+puts "  Admin:  admin@tapin.com / password123"
+puts "  Demo:   demo@gmail.com / password123"
+puts "  Studio: #{studio.name}"
+puts "  Users: #{User.count}, Check-ins: #{CheckIn.count}, Rewards: #{Reward.count}"
