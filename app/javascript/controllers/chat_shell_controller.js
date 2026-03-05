@@ -24,7 +24,7 @@ export default class extends Controller {
     this.inputTarget.value = ""
 
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
-    const url = `/conversations/${this.conversationIdValue}/reply`
+    const url = `/conversations/${this.conversationIdValue}/messages`
 
     const res = await fetch(url, {
       method: "POST",

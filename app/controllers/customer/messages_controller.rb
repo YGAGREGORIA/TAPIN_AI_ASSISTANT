@@ -9,7 +9,8 @@ class MessagesController < ApplicationController
   def create
     @chat = current_user.chats.find(params[:conversation_id])
 
-    user_text = params[:message]
+    user_text = params[:message].to_s.strip
+    return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?
 
     # save user message
     Message.create!(role: "user", content: user_text, chat: @chat)
@@ -49,16 +50,20 @@ class MessagesController < ApplicationController
       "Upcoming classes: #{classes.join(', ')}."
 
     else
-      call_openai(user_text)
+      call_openai
     end
   end
 
-  def call_openai(user_text)
-    ruby_llm_chat = RubyLLM.chat(model: "gpt-4o-mini")
+  def call_openai
+    ruby_llm_chat = RubyLLM.chat(model: "gpt-4.1-mini")
+
+    history = @chat.messages.order(:created_at).map do |m|
+      { role: m.role, content: m.content }
+    end
 
     response = ruby_llm_chat
                .with_instructions(SYSTEM_PROMPT)
-               .ask(user_text)
+               .ask(history)
 
     response.content
   end
