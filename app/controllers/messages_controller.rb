@@ -32,35 +32,93 @@ class MessagesController < ApplicationController
     # save assistant message
     Message.create!(role: "assistant", content: assistant_text, chat: @chat)
 
-    render json: { assistant: assistant_text }
+    # Auto-rename chat based on first user message
+    new_title = maybe_rename_chat(user_text)
+
+    render json: { assistant: assistant_text, title: new_title }
   end
 
   private
+
+  # Rename chat to a short summary of the first user message
+  def maybe_rename_chat(user_text)
+    return nil unless @chat.title&.match?(/\AChat \d+\z/)
+
+    title = user_text.truncate(40, omission: "...")
+    @chat.update!(title: title)
+    title
+  end
 
   # --- Customer flow (keyword matching + RubyLLM fallback) ---
 
   def generate_customer_response(user_text)
     text = user_text.downcase
 
-    if text.include?("check-in")
+    if text.match?(/check.?in|visit|attendance|how many/)
       count = CheckIn.where(user: current_user).count
-      "You have #{count} check-ins."
+      studio = current_user.studio
+      tier = case count
+             when 0..9 then "Member"
+             when 10..24 then "Bronze"
+             when 25..49 then "Silver"
+             else "Gold"
+             end
+      "You have #{count} check-ins! Your current tier is #{tier}."
 
-    elsif text.include?("reward")
-      rewards = Reward.limit(3).pluck(:name)
-      "You can unlock rewards like: #{rewards.join(', ')}."
+    elsif text.match?(/reward|unlock|earn|points|badge/)
+      user_rewards = current_user.user_rewards.includes(:reward)
+      if user_rewards.any?
+        lines = user_rewards.map do |ur|
+          status = ur.redeemed? ? "Unlocked" : "#{ur.progress}/#{ur.reward.required_checkins}"
+          "#{ur.reward.name}: #{status}"
+        end
+        "Your rewards:\n#{lines.join("\n")}"
+      else
+        rewards = Reward.limit(3).pluck(:name)
+        "You can unlock rewards like: #{rewards.join(', ')}."
+      end
 
-    elsif text.include?("recommend") && text.include?("class")
-      classes = Course.limit(3).pluck(:name)
-      "Recommended classes: #{classes.join(', ')}."
+    elsif text.match?(/class|recommend|workout|exercise|train/)
+      classes = Course.limit(5).pluck(:name, :category)
+      lines = classes.map { |name, cat| "#{name} (#{cat})" }
+      "Here are some classes you might enjoy:\n#{lines.join("\n")}"
 
-    elsif text.include?("deal")
-      deals = Deal.limit(3).pluck(:title)
-      "Here are some deals: #{deals.join(', ')}."
+    elsif text.match?(/deal|offer|discount|promo|special/)
+      deals = Deal.where(active: true).pluck(:title, :description)
+      if deals.any?
+        lines = deals.map { |title, desc| "#{title} — #{desc}" }
+        "Active deals:\n#{lines.join("\n")}"
+      else
+        "No active deals right now, but check back soon!"
+      end
 
-    elsif text.include?("schedule")
-      classes = Course.limit(3).pluck(:name)
+    elsif text.match?(/schedule|upcoming|when|time/)
+      classes = Course.limit(5).pluck(:name)
       "Upcoming classes: #{classes.join(', ')}."
+
+    elsif text.match?(/tier|level|status|rank/)
+      count = CheckIn.where(user: current_user).count
+      tier = case count
+             when 0..9 then "Member"
+             when 10..24 then "Bronze"
+             when 25..49 then "Silver"
+             else "Gold"
+             end
+      next_tier = case tier
+                  when "Member" then "#{10 - count} more check-ins to reach Bronze"
+                  when "Bronze" then "#{25 - count} more check-ins to reach Silver"
+                  when "Silver" then "#{50 - count} more check-ins to reach Gold"
+                  else "You've reached the highest tier!"
+                  end
+      "You're currently at #{tier} tier with #{count} check-ins. #{next_tier}"
+
+    elsif text.match?(/hi|hello|hey|help|what can you/)
+      "Hey#{current_user.first_name.present? ? " #{current_user.first_name}" : ""}! I can help you with:\n" \
+      "- Your check-ins and tier status\n" \
+      "- Available rewards and progress\n" \
+      "- Class recommendations\n" \
+      "- Current deals and offers\n" \
+      "Just ask me anything!"
 
     else
       call_openai(CUSTOMER_SYSTEM_PROMPT)
@@ -127,5 +185,8 @@ class MessagesController < ApplicationController
                .ask(history)
 
     response.content
+  rescue => e
+    Rails.logger.error("OpenAI error: #{e.class} - #{e.message}")
+    "I'm not sure how to help with that yet. Try asking about your check-ins, rewards, classes, or deals!"
   end
 end

@@ -6,7 +6,7 @@
             data-action="click->chat-shell#openSidebar">
       <i class="fas fa-bars me-1"></i> History
     </button>
-    <span class="fw-semibold"><%= @chat.title %></span>
+    <span class="fw-semibold" data-chat-shell-target="chatTitle"><%= @chat.title %></span>
     <div class="ms-auto">
       <%= button_to chats_path, method: :post, class: "btn btn-sm btn-primary rounded-pill" do %>
         <i class="fas fa-plus me-1"></i> New chat
@@ -21,13 +21,13 @@
       <% @messages.each do |m| %>
         <% if m.role == "user" %>
           <div class="d-flex justify-content-end align-items-end gap-2 mb-3">
-            <div class="chat-bubble chat-bubble-user"><%= m.content %></div>
+            <div class="chat-bubble chat-bubble-user"><%= simple_format(m.content, {}, wrapper_tag: "span") %></div>
             <div class="chat-avatar chat-avatar-user">You</div>
           </div>
         <% else %>
           <div class="d-flex justify-content-start align-items-end gap-2 mb-3">
             <div class="chat-avatar chat-avatar-ai">AI</div>
-            <div class="chat-bubble chat-bubble-assistant"><%= m.content %></div>
+            <div class="chat-bubble chat-bubble-assistant"><%= simple_format(m.content, {}, wrapper_tag: "span") %></div>
           </div>
         <% end %>
       <% end %>
@@ -56,15 +56,6 @@
       </div>
     <% end %>
 
-    <%# Typing indicator (hidden by default) %>
-    <div class="d-flex align-items-end gap-2 mb-3 d-none" data-chat-shell-target="typing">
-      <div class="chat-avatar chat-avatar-ai">AI</div>
-      <div class="typing-indicator">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
-    </div>
   </div>
 
   <%# ── Input area ── %>

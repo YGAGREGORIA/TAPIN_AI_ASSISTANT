@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["messages", "input", "sendBtn", "typing", "suggestions", "welcome", "overlay", "sidebar"]
+  static targets = ["messages", "input", "sendBtn", "suggestions", "welcome", "overlay", "sidebar", "chatTitle"]
   static values = { chatId: Number }
 
   connect() {
@@ -17,7 +17,7 @@ export default class extends Controller {
 
     this.appendUserMessage(message)
     this.inputTarget.value = ""
-    this.showTyping()
+    this.appendTyping()
     this.disableInput()
     this.hideWelcome()
 
@@ -32,7 +32,7 @@ export default class extends Controller {
     if (!message) return
 
     this.appendUserMessage(message)
-    this.showTyping()
+    this.appendTyping()
     this.disableInput()
     this.hideWelcome()
 
@@ -54,10 +54,15 @@ export default class extends Controller {
       if (!response.ok) throw new Error("Request failed")
 
       const data = await response.json()
-      this.hideTyping()
+      this.removeTyping()
       this.appendAssistantMessage(data.assistant)
+
+      // Update chat title if server renamed it
+      if (data.title && this.hasChatTitleTarget) {
+        this.chatTitleTarget.textContent = data.title
+      }
     } catch (error) {
-      this.hideTyping()
+      this.removeTyping()
       this.appendAssistantMessage("Sorry, something went wrong. Please try again.")
     } finally {
       this.enableInput()
@@ -76,26 +81,34 @@ export default class extends Controller {
   }
 
   appendAssistantMessage(text) {
+    // Convert newlines to <br> for multi-line responses
+    const formatted = this.escapeHtml(text).replace(/\n/g, "<br>")
     const html = `
       <div class="d-flex justify-content-start align-items-end gap-2 mb-3">
         <div class="chat-avatar chat-avatar-ai">AI</div>
-        <div class="chat-bubble chat-bubble-assistant">${this.escapeHtml(text)}</div>
+        <div class="chat-bubble chat-bubble-assistant">${formatted}</div>
       </div>`
     this.messagesTarget.insertAdjacentHTML("beforeend", html)
     this.scrollToBottom()
   }
 
-  showTyping() {
-    if (this.hasTypingTarget) {
-      this.typingTarget.classList.remove("d-none")
-      this.scrollToBottom()
-    }
+  appendTyping() {
+    const html = `
+      <div class="d-flex align-items-end gap-2 mb-3" id="typing-indicator">
+        <div class="chat-avatar chat-avatar-ai">AI</div>
+        <div class="typing-indicator">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </div>`
+    this.messagesTarget.insertAdjacentHTML("beforeend", html)
+    this.scrollToBottom()
   }
 
-  hideTyping() {
-    if (this.hasTypingTarget) {
-      this.typingTarget.classList.add("d-none")
-    }
+  removeTyping() {
+    const el = document.getElementById("typing-indicator")
+    if (el) el.remove()
   }
 
   hideWelcome() {
