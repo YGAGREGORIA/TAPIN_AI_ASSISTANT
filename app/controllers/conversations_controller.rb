@@ -1,20 +1,24 @@
 class ConversationsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_chat, only: %i[show reply]
+  before_action :set_chat, only: [:show]
 
   def index
     @chats = current_user.chats.order(created_at: :asc)
+    @chat = @chats.last
+    @messages = @chat&.messages&.order(created_at: :asc)
   end
 
   def show
     @chats = current_user.chats.order(created_at: :asc)
     @messages = @chat.messages.order(created_at: :asc)
+
+    # reuse index UI
+    render :index
   end
 
   def create
     studio = Studio.find_by(owner_email: current_user.email) || Studio.first
 
-    # Falls kein Studio existiert:
     if studio.nil?
       redirect_to root_path, alert: "Kein Studio gefunden."
       return
@@ -28,19 +32,7 @@ class ConversationsController < ApplicationController
       title: "Chat #{count}"
     )
 
-    redirect_to conversation_path(chat.id)
-  end
-
-  def reply
-    user_text = params[:message].to_s.strip
-    return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?
-
-    @chat.messages.create!(role: "user", content: user_text)
-
-    assistant_text = "Got it. You said: #{user_text}"
-    @chat.messages.create!(role: "assistant", content: assistant_text)
-
-    render json: { assistant: assistant_text }
+    redirect_to conversation_path(chat)
   end
 
   private
