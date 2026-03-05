@@ -1,55 +1,71 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
+  static targets = ["sidebar", "overlay", "messages", "input", "search", "list"]
+  static values = { chatId: Number }
 
-static targets = ["messages","input"]
-static values = { chatId: Number }
+  openSidebar() {
+    this.overlayTarget.hidden = false
+    this.sidebarTarget.style.transform = "translateX(0)"
+  }
 
-async send(event){
+  closeSidebar() {
+    this.overlayTarget.hidden = true
+    this.sidebarTarget.style.transform = "translateX(-100%)"
+  }
 
-event.preventDefault()
+  async send(event) {
+    event.preventDefault()
 
-const message = this.inputTarget.value
+    const text = (this.inputTarget.value || "").trim()
+    if (!text) return
 
-if(message.trim() === "") return
+    if (!this.hasChatIdValue || !this.chatIdValue) {
+      this.appendMessage("assistant", "missing chat id")
+      return
+    }
 
-const chatId = this.chatIdValue
+    this.appendMessage("user", text)
+    this.inputTarget.value = ""
 
-this.messagesTarget.insertAdjacentHTML(
-"beforeend",
-`<div class="d-flex justify-content-end mb-2">
-<div class="bg-primary text-white rounded-4 px-3 py-2">
-${message}
-</div></div>`
-)
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
+    const url = `/chats/${this.chatIdValue}/messages`
 
-this.inputTarget.value=""
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": token,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ message: text })
+    })
 
-const response = await fetch(`/chats/${chatId}/messages`,{
+    if (!res.ok) {
+      this.appendMessage("assistant", "Sorry, something went wrong.")
+      return
+    }
 
-method:"POST",
+    const data = await res.json()
+    this.appendMessage("assistant", data.assistant || "OK")
+  }
 
-headers:{
-"Content-Type":"application/json",
-"X-CSRF-Token":document.querySelector("meta[name='csrf-token']").content
-},
+  appendMessage(role, text) {
+    const row = document.createElement("div")
+    row.className = role === "user"
+      ? "d-flex justify-content-end mb-2"
+      : "d-flex justify-content-start mb-2"
 
-body:JSON.stringify({message:message})
+    const bubble = document.createElement("div")
+    bubble.className = role === "user"
+      ? "bg-primary text-white rounded-4 px-3 py-2 shadow-sm"
+      : "bg-white border rounded-4 px-3 py-2 shadow-sm"
 
-})
+    bubble.style.maxWidth = "85%"
+    bubble.textContent = text
 
-const data = await response.json()
-
-this.messagesTarget.insertAdjacentHTML(
-"beforeend",
-`<div class="d-flex justify-content-start mb-2">
-<div class="bg-white border rounded-4 px-3 py-2">
-${data.assistant}
-</div></div>`
-)
-
-this.messagesTarget.scrollTop=this.messagesTarget.scrollHeight
-
-}
-
+    row.appendChild(bubble)
+    this.messagesTarget.appendChild(row)
+    this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight
+  }
 }

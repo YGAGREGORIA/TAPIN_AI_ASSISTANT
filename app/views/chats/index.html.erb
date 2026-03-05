@@ -1,16 +1,68 @@
- <div
-  class="container-fluid py-3"
-  data-controller="chat-shell"
-  data-chat-shell-chat-id-value="<%= @chat.id if @chat %>"
->
+<div class="container-fluid py-3">
   <div class="d-flex align-items-center gap-2 mb-3">
-    <button type="button" class="btn btn-outline-primary" data-action="click->chat-shell#openSidebar">
-      History
-    </button>
-
     <div class="ms-auto">
       <%= button_to "New chat", chats_path, method: :post, class: "btn btn-primary" %>
     </div>
   </div>
 
- 
+  <div class="row">
+    <div class="col-12 col-lg-8 mx-auto">
+      <div class="card shadow-sm rounded-4">
+        <div class="card-header bg-white d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-primary">AI</span>
+            <span>Your chats</span>
+          </div>
+
+          <%= link_to "Open latest", (@chats.first ? chat_path(@chats.first) : chats_path), class: "btn btn-sm btn-outline-secondary" %>
+        </div>
+
+        <div class="card-body p-0">
+          <% if @chats.present? %>
+            <div class="list-group list-group-flush">
+              <% @chats.each_with_index do |chat, i| %>
+                <% preview =
+                    chat.messages.order(:created_at).last&.content.to_s.strip.presence ||
+                    "No messages yet. Click to start chatting."
+                %>
+
+                <%= link_to chat_path(chat), class: "list-group-item list-group-item-action py-3" do %>
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="fw-semibold">
+                          <%= chat.title.presence || "Chat #{i + 1}" %>
+                        </div>
+                        <div class="text-muted small">
+                          <%= chat.created_at.strftime("%d.%m.%Y %H:%M") %>
+                        </div>
+                      </div>
+
+                      <div class="text-muted small mt-1">
+                        <%= preview.truncate(90) %>
+                      </div>
+                    </div>
+
+                    <div class="text-muted small">
+                      ›
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="p-4 text-center text-muted">
+              No chats yet. Click “New chat” to start.
+            </div>
+          <% end %>
+        </div>
+
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+          <div class="text-muted small">
+            <%= @chats.size %> chats
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

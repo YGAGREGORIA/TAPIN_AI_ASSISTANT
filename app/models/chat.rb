@@ -10,7 +10,7 @@ class Chat < ApplicationRecord
 
   private
 
-  def set_title
+   def set_title
     count = Chat.where(user_id: user_id).count + 1
     self.title ||= "Chat #{count}"
   end

@@ -75,3 +75,17 @@ puts "  email: demo@tapin.app"
 puts "  password: password123"
 puts "Studio: #{studio.name}"
 puts "Chat id: #{chat.id}"
+
+
+studio = Studio.first || Studio.create!(name: "Demo Studio")
+
+user = User.find_or_create_by!(email: "demo@gmail.comab") do |u|
+  u.password = "password123"
+  u.password_confirmation = "password123"
+  u.first_name = "Demo"
+  u.last_name = "User"
+  u.phone_number = "49123456"
+  u.studio = studio
+end
+
+puts "created User with the Studio"
