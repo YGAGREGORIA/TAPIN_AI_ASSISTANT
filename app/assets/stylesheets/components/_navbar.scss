@@ -1,12 +1,58 @@
-.navbar-lewagon {
-  justify-content: space-between;
-  background: white;
+.tapin-navbar {
+background: #2B2118;
+border-bottom: none;
 }
 
-.navbar-lewagon .navbar-collapse {
-  flex-grow: 0;
+.tapin-brand {
+font-family: "Space Grotesk", sans-serif;
+font-weight: 700;
+font-size: 22px;
+color: #F6F1EB;
+
+span {
+color: #E1B84A;
+}
 }
 
-.navbar-lewagon .navbar-brand img {
-  width: 40px;
+.nav-link {
+color: #F6F1EB !important;
+font-weight: 500;
+}
+
+.nav-link {
+color: #E1B84A !important;
+}
+
+.navbar-toggler {
+border-color: rgba(255,255,255,0.2);
+}
+
+.navbar-toggler-icon {
+filter: invert(1);
+}
+
+.tapin-avatar {
+width: 32px;
+height: 32px;
+border-radius: 50%;
+background: #E1B84A;
+display: flex;
+align-items: center;
+justify-content: center;
+font-weight: 600;
+color: #2B2118;
+}
+
+.tapin-btn-primary {
+background: #E1B84A;
+color: #2B2118;
+padding: 8px 18px;
+border-radius: 8px;
+font-weight: 600;
+text-decoration: none;
+}
+
+.tapin-btn-primary {
+background: #d4a93f;
+color: #2B2118;
 }

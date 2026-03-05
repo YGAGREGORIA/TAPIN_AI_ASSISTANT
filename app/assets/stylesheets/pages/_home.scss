@@ -1,1 +1,72 @@
-// Specific CSS for your home-page
+.landing {
+min-height: calc(100vh - 70px);
+background: #F6F1EB;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 40px;
+}
+
+.landing-card {
+text-align: center;
+max-width: 620px;
+}
+
+.tapin-logo {
+font-family: "Space Grotesk", sans-serif;
+font-size: 72px;
+font-weight: 700;
+letter-spacing: 4px;
+color: #2B2118;
+margin-bottom: 24px;
+
+span {
+color: #E1B84A;
+}
+}
+
+.landing-description {
+font-family: "Inter", sans-serif;
+font-size: 20px;
+color: #2B2118;
+margin-bottom: 12px;
+}
+
+.landing-subtext {
+font-family: "Inter", sans-serif;
+font-size: 16px;
+color: #7a6e64;
+margin-bottom: 32px;
+}
+
+.landing-actions {
+display: flex;
+justify-content: center;
+gap: 16px;
+}
+
+.tapin-btn-primary {
+background: #E1B84A;
+border: none;
+color: #2B2118;
+font-weight: 600;
+padding: 12px 28px;
+border-radius: 10px;
+}
+
+.tapin-btn-primary:hover {
+background: #d5a93f;
+}
+
+.tapin-btn-outline {
+border: 2px solid #2B2118;
+color: #2B2118;
+padding: 12px 28px;
+border-radius: 10px;
+background: transparent;
+}
+
+.tapin-btn-outline:hover {
+background: #2B2118;
+color: white;
+}
