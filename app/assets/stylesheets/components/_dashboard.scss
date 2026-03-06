@@ -1,0 +1,155 @@
+/* Dashboard layout */
+
+.dashboard-container {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.dashboard-title {
+  font-family: $headers-font;
+  font-size: 2rem;
+  color: $secondary;
+}
+
+.dashboard-subtitle {
+  color: lighten($secondary, 30%);
+  margin-top: 4px;
+}
+
+
+/* Sections */
+
+.dashboard-section {
+  margin-top: 2.5rem;
+}
+
+.section-title {
+  font-family: $headers-font;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: $secondary;
+}
+
+
+/* Cards */
+
+.dashboard-card {
+  border-radius: 14px;
+  border: 1px solid darken($light, 8%);
+  background: white;
+  transition: all 0.25s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+}
+
+
+/* Stats */
+
+.stat-label {
+  font-size: 0.85rem;
+  color: lighten($secondary, 30%);
+  margin-bottom: 6px;
+}
+
+.stat-number {
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: $secondary;
+}
+
+
+/* Reward titles */
+
+.reward-title {
+  font-weight: 600;
+  color: $secondary;
+}
+
+
+/* Progress bars */
+
+.tapin-progress {
+  height: 10px;
+  border-radius: 10px;
+  background: $light;
+  overflow: hidden;
+}
+
+.tapin-progress-bar {
+  background: $primary;
+  font-size: 0.7rem;
+  color: $secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 1s ease;
+}
+
+
+/* Badges */
+
+.tapin-badge {
+  background: $primary;
+  color: $secondary;
+  font-weight: 500;
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+
+/* Table */
+
+.dashboard-table {
+  background: white;
+}
+
+.dashboard-table th {
+  font-weight: 600;
+  color: $secondary;
+  border-bottom: 1px solid darken($light, 10%);
+}
+
+.dashboard-table td {
+  vertical-align: middle;
+}
+
+.dashboard-table tr {
+  transition: background 0.2s ease;
+}
+
+.dashboard-table tr:hover {
+  background: lighten($primary, 45%);
+}
+
+
+/* Animations base */
+
+[data-dashboard-target="card"] {
+  will-change: transform, opacity;
+}
+
+[data-dashboard-target="row"] {
+  will-change: transform, opacity;
+}
+
+
+/* Responsive */
+
+@media (max-width: 768px) {
+
+  .stat-number {
+    font-size: 1.7rem;
+  }
+
+  .dashboard-title {
+    font-size: 1.6rem;
+  }
+
+}

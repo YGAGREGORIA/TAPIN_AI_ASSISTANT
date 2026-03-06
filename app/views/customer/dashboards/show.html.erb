@@ -1,85 +1,276 @@
-<div class="container mt-4">
-  <div class="row mb-4">
-    <div class="col-12">
-      <h1>Welcome back, <%= @user.first_name %>!</h1>
-      <p class="text-muted"><%= @studio&.name %></p>
-    </div>
-  </div>
+<div class="container dashboard-container"
+     data-controller="dashboard">
 
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <div class="card text-center">
-        <div class="card-body">
-          <h5 class="card-title">Total Check-ins</h5>
-          <p class="display-4"><%= @total_check_ins %></p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card text-center">
-        <div class="card-body">
-          <h5 class="card-title">Current Tier</h5>
-          <p class="display-4"><%= @tier %></p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card text-center">
-        <div class="card-body">
-          <h5 class="card-title">Rewards Earned</h5>
-          <p class="display-4"><%= @user_rewards.select(&:redeemed).count %></p>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Header -->
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">
+      Welcome back, <%= @user.first_name %>!
+    </h1>
 
-  <div class="row mb-4">
-    <div class="col-12">
-      <h3>Reward Progress</h3>
-    </div>
-    <% @user_rewards.each do |ur| %>
-      <div class="col-md-6 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6><%= ur.reward.name %></h6>
-            <% pct = ur.reward.required_checkins > 0 ? (ur.progress.to_f / ur.reward.required_checkins * 100).round : 0 %>
-            <div class="progress">
-              <div class="progress-bar" role="progressbar" style="width: <%= pct %>%">
-                <%= ur.progress %>/<%= ur.reward.required_checkins %>
-              </div>
-            </div>
-            <% if ur.redeemed %>
-              <span class="badge bg-success mt-2">Earned!</span>
-            <% end %>
-          </div>
-        </div>
-      </div>
+    <% if @studio.present? %>
+      <p class="dashboard-subtitle"><%= @studio.name %></p>
     <% end %>
   </div>
 
-  <div class="row">
-    <div class="col-12">
-      <h3>Recent Check-ins</h3>
-      <% if @recent_check_ins.any? %>
-        <table class="table">
+
+  <!-- Stats -->
+  <div class="row dashboard-stats">
+
+    <div class="col-md-3 mb-3">
+      <div class="card dashboard-card text-center"
+           data-dashboard-target="card">
+        <div class="card-body">
+          <p class="stat-label">Total Check-ins</p>
+          <p class="stat-number"
+             data-dashboard-target="number">
+             <%= @total_check_ins %>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card dashboard-card text-center"
+           data-dashboard-target="card">
+        <div class="card-body">
+          <p class="stat-label">This Month</p>
+          <p class="stat-number"
+             data-dashboard-target="number">
+             <%= @check_ins_this_month %>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card dashboard-card text-center"
+           data-dashboard-target="card">
+        <div class="card-body">
+          <p class="stat-label">Current Tier</p>
+          <p class="stat-number">
+            <%= @tier %>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card dashboard-card text-center"
+           data-dashboard-target="card">
+        <div class="card-body">
+          <p class="stat-label">Streak 🔥</p>
+          <p class="stat-number"
+             data-dashboard-target="number">
+             <%= @current_streak %>
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- Tier Progress -->
+  <div class="dashboard-section">
+
+    <h3 class="section-title">Tier Progress</h3>
+
+    <div class="card dashboard-card"
+         data-dashboard-target="card">
+
+      <div class="card-body">
+
+        <p class="reward-title mb-2">
+          <%= @total_check_ins %> / <%= @next_tier_goal %> check-ins to next tier
+        </p>
+
+        <div class="progress tapin-progress">
+
+          <div
+            class="progress-bar tapin-progress-bar"
+            data-dashboard-target="progress"
+            data-progress="<%= @progress_to_next_tier %>"
+            role="progressbar">
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Rewards Ready -->
+  <% if @available_rewards.any? %>
+
+    <div class="dashboard-section">
+
+      <h3 class="section-title">Rewards Ready 🎁</h3>
+
+      <div class="row">
+
+        <% @available_rewards.each do |ur| %>
+
+          <div class="col-md-4 mb-3">
+
+            <div class="card dashboard-card"
+                 data-dashboard-target="card">
+
+              <div class="card-body">
+
+                <h6 class="reward-title">
+                  <%= ur.reward.name %>
+                </h6>
+
+                <span class="badge tapin-badge">
+                  Ready to redeem
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        <% end %>
+
+      </div>
+
+    </div>
+
+  <% end %>
+
+
+  <!-- Reward Progress -->
+  <div class="dashboard-section">
+
+    <h3 class="section-title">Reward Progress</h3>
+
+    <div class="row">
+
+      <% @user_rewards.each do |ur| %>
+
+        <% pct = ur.reward.required_checkins > 0 ? (ur.progress.to_f / ur.reward.required_checkins * 100).round : 0 %>
+
+        <div class="col-md-6 mb-3">
+
+          <div class="card dashboard-card"
+               data-dashboard-target="card">
+
+            <div class="card-body">
+
+              <h6 class="reward-title">
+                <%= ur.reward.name %>
+              </h6>
+
+              <div class="progress tapin-progress">
+
+                <div
+                  class="progress-bar tapin-progress-bar"
+                  data-dashboard-target="progress"
+                  data-progress="<%= pct %>">
+
+                  <%= ur.progress %>/<%= ur.reward.required_checkins %>
+
+                </div>
+
+              </div>
+
+              <% if ur.redeemed %>
+                <span class="badge tapin-badge mt-2">
+                  Earned
+                </span>
+              <% end %>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      <% end %>
+
+    </div>
+
+  </div>
+
+
+  <!-- Favorite Studio -->
+  <% if @favorite_studio.present? %>
+
+    <div class="dashboard-section">
+
+      <h3 class="section-title">Favorite Studio</h3>
+
+      <div class="card dashboard-card"
+           data-dashboard-target="card">
+
+        <div class="card-body">
+
+          <p class="stat-number">
+            <%= @favorite_studio %>
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  <% end %>
+
+
+  <!-- Recent Check-ins -->
+  <div class="dashboard-section">
+
+    <h3 class="section-title">Recent Check-ins</h3>
+
+    <% if @recent_check_ins.any? %>
+
+      <div class="table-responsive">
+
+        <table class="table dashboard-table">
+
           <thead>
             <tr>
               <th>Date</th>
               <th>Studio</th>
             </tr>
           </thead>
+
           <tbody>
+
             <% @recent_check_ins.each do |ci| %>
-              <tr>
-                <td><%= ci.created_at.strftime("%B %d, %Y at %l:%M %p") %></td>
-                <td><%= ci.studio.name %></td>
+
+              <tr data-dashboard-target="row">
+                <td>
+                  <%= ci.created_at.strftime("%B %d, %Y at %l:%M %p") %>
+                </td>
+
+                <td>
+                  <%= ci.studio.name %>
+                </td>
               </tr>
+
             <% end %>
+
           </tbody>
+
         </table>
-      <% else %>
-        <p class="text-muted">No check-ins yet. Visit a studio to get started!</p>
-      <% end %>
-    </div>
+
+      </div>
+
+    <% else %>
+
+      <p class="text-muted">
+        No check-ins yet. Visit a studio to get started!
+      </p>
+
+    <% end %>
+
   </div>
+
 </div>
