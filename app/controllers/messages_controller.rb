@@ -216,17 +216,22 @@ class MessagesController < ApplicationController
   end
 
   def call_openai(system_prompt)
-    ruby_llm_chat = RubyLLM.chat(model: "gpt-4.1-mini")
+    Timeout.timeout(10) do
+      ruby_llm_chat = RubyLLM.chat(model: "gpt-4.1-mini")
 
-    history = @chat.messages.order(:created_at).map do |m|
-      { role: m.role, content: m.content }
+      history = @chat.messages.order(:created_at).map do |m|
+        { role: m.role, content: m.content }
+      end
+
+      response = ruby_llm_chat
+                 .with_instructions(system_prompt)
+                 .ask(history)
+
+      response.content
     end
-
-    response = ruby_llm_chat
-               .with_instructions(system_prompt)
-               .ask(history)
-
-    response.content
+  rescue Timeout::Error
+    Rails.logger.error("OpenAI timeout: request exceeded 10 seconds")
+    "Sorry, that took too long! Please try again."
   rescue StandardError => e
     Rails.logger.error("OpenAI error: #{e.class} - #{e.message}")
     "I'm not sure how to help with that yet. Try asking about your check-ins, rewards, classes, or deals!"
