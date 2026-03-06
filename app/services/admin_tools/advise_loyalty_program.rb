@@ -11,13 +11,15 @@ module AdminTools
       rewards = @studio.rewards
       deals = @studio.deals
 
-      active_last_30 = customers.select { |u| u.check_ins.where(studio: @studio).where("created_at > ?", 30.days.ago).exists? }.count
-      avg_checkins_per_member = total_customers > 0 ? (total_checkins.to_f / total_customers).round(1) : 0
-      retention_rate = total_customers > 0 ? ((active_last_30.to_f / total_customers) * 100).round(1) : 0
+      active_last_30 = customers.select do |u|
+        u.check_ins.where(studio: @studio).where("created_at > ?", 30.days.ago).exists?
+      end.count
+      avg_checkins_per_member = total_customers.positive? ? (total_checkins.to_f / total_customers).round(1) : 0
+      retention_rate = total_customers.positive? ? ((active_last_30.to_f / total_customers) * 100).round(1) : 0
 
       redemption_count = UserReward.joins(:reward).where(rewards: { studio_id: @studio.id }, redeemed: true).count
       total_user_rewards = UserReward.joins(:reward).where(rewards: { studio_id: @studio.id }).count
-      redemption_rate = total_user_rewards > 0 ? ((redemption_count.to_f / total_user_rewards) * 100).round(1) : 0
+      redemption_rate = total_user_rewards.positive? ? ((redemption_count.to_f / total_user_rewards) * 100).round(1) : 0
 
       advice = []
 
@@ -33,7 +35,7 @@ module AdminTools
         advice << "You only have #{rewards.count} reward(s). Adding variety (e.g., merchandise, free guest passes, priority booking) increases engagement."
       end
 
-      if deals.where(active: true).count == 0
+      if deals.where(active: true).none?
         advice << "You have no active deals. Running at least one promotion at all times keeps members engaged and attracts new sign-ups."
       end
 

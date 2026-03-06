@@ -60,18 +60,32 @@
 
   <%# ── Input area ── %>
   <div class="chat-input-area">
-    <form class="d-flex align-items-center gap-2" data-action="submit->chat-shell#send">
-      <input type="text"
-             name="message"
-             class="form-control chat-input"
-             placeholder="Type a message..."
-             autocomplete="off"
-             data-chat-shell-target="input">
-      <button type="submit" class="btn btn-primary chat-send-btn" data-chat-shell-target="sendBtn">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    </form>
-  </div>
+  <form class="d-flex align-items-center gap-2"
+        data-action="submit->chat-shell#send"
+        enctype="multipart/form-data">
+
+    <label class="btn btn-outline-secondary chat-attach-btn mb-0">
+      <i class="fas fa-paperclip"></i>
+      <input type="file"
+             name="file"
+             accept=".pdf,image/*,audio/*"
+             class="d-none"
+             data-chat-shell-target="fileInput">
+    </label>
+
+    <input type="text"
+           name="message"
+           class="form-control chat-input"
+           placeholder="Type a message..."
+           autocomplete="off"
+           data-chat-shell-target="input">
+
+    <button type="submit" class="btn btn-primary chat-send-btn" data-chat-shell-target="sendBtn">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </form>
+  <div data-chat-shell-target="filePreview"></div>
+</div>
 
   <%# ── Sidebar overlay ── %>
   <div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-none"

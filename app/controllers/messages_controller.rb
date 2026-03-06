@@ -17,23 +17,66 @@ class MessagesController < ApplicationController
     @chat = current_user.chats.find(params[:chat_id])
 
     user_text = params[:message].to_s.strip
-    return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?
+    uploaded_file = params[:file]
+
+    if user_text.blank? && uploaded_file.blank?
+      return render json: { error: "empty_message" },
+                    status: :unprocessable_entity
+    end
 
     # save user message
-    Message.create!(role: "user", content: user_text, chat: @chat)
+
+    user_message = Message.new(
+      role: "user",
+      content: user_text.presence || uploaded_file&.original_filename.to_s,
+      chat: @chat
+    )
+
+    user_message.file.attach(uploaded_file) if uploaded_file.present? && user_message.respond_to?(:file)
+
+    user_message.save!
 
     # generate response — admin gets tool-augmented AI, customer gets keyword + AI
-    assistant_text = if current_user.admin?
+
+    assistant_text = if uploaded_file.present?
+                       process_file(uploaded_file)
+                     elsif current_user.admin?
                        generate_admin_response(user_text)
                      else
                        generate_customer_response(user_text)
                      end
 
+    def process_file(file)
+      if file.content_type == "application/pdf"
+        chat = RubyLLM.chat(model: "gpt-4o")
+        response = chat.ask("Please analyze this PDF and tell me what it contains.", with: file.tempfile.path)
+        response.content
+
+      elsif file.content_type.start_with?("image/")
+        chat = RubyLLM.chat(model: "gpt-4o")
+        response = chat.ask("Describe exactly what you see in this image. If there is text in the image, read it too.",
+                            with: file.tempfile.path)
+        response.content
+
+      elsif file.content_type.start_with?("audio/")
+        chat = RubyLLM.chat(model: "gpt-4o-audio-preview")
+        response = chat.ask("Please transcribe and summarize this audio.", with: file.tempfile.path)
+        response.content
+
+      else
+        "Unsupported file type."
+      end
+    rescue StandardError => e
+      Rails.logger.error("File processing error: #{e.class} - #{e.message}")
+      "Sorry, I had trouble processing that file."
+    end
+
     # save assistant message
     Message.create!(role: "assistant", content: assistant_text, chat: @chat)
 
     # Auto-rename chat based on first user message
-    new_title = maybe_rename_chat(user_text)
+
+    new_title = maybe_rename_chat(user_text.presence || uploaded_file&.original_filename.to_s)
 
     render json: { assistant: assistant_text, title: new_title }
   end
@@ -50,13 +93,13 @@ class MessagesController < ApplicationController
   end
 
   # --- Customer flow (keyword matching + RubyLLM fallback) ---
-
   def generate_customer_response(user_text)
     text = user_text.downcase
 
-    if text.match?(/check.?in|visit|attendance|how many/)
+    case text
+    when /check.?in|visit|attendance|how many/
       count = CheckIn.where(user: current_user).count
-      studio = current_user.studio
+      current_user.studio
       tier = case count
              when 0..9 then "Member"
              when 10..24 then "Bronze"
@@ -65,7 +108,7 @@ class MessagesController < ApplicationController
              end
       "You have #{count} check-ins! Your current tier is #{tier}."
 
-    elsif text.match?(/reward|unlock|earn|points|badge/)
+    when /reward|unlock|earn|points|badge/
       user_rewards = current_user.user_rewards.includes(:reward)
       if user_rewards.any?
         lines = user_rewards.map do |ur|
@@ -78,12 +121,12 @@ class MessagesController < ApplicationController
         "You can unlock rewards like: #{rewards.join(', ')}."
       end
 
-    elsif text.match?(/class|recommend|workout|exercise|train/)
+    when /class|recommend|workout|exercise|train/
       classes = Course.limit(5).pluck(:name, :category)
       lines = classes.map { |name, cat| "#{name} (#{cat})" }
       "Here are some classes you might enjoy:\n#{lines.join("\n")}"
 
-    elsif text.match?(/deal|offer|discount|promo|special/)
+    when /deal|offer|discount|promo|special/
       deals = Deal.where(active: true).pluck(:title, :description)
       if deals.any?
         lines = deals.map { |title, desc| "#{title} — #{desc}" }
@@ -92,11 +135,11 @@ class MessagesController < ApplicationController
         "No active deals right now, but check back soon!"
       end
 
-    elsif text.match?(/schedule|upcoming|when|time/)
+    when /schedule|upcoming|when|time/
       classes = Course.limit(5).pluck(:name)
       "Upcoming classes: #{classes.join(', ')}."
 
-    elsif text.match?(/tier|level|status|rank/)
+    when /tier|level|status|rank/
       count = CheckIn.where(user: current_user).count
       tier = case count
              when 0..9 then "Member"
@@ -112,8 +155,8 @@ class MessagesController < ApplicationController
                   end
       "You're currently at #{tier} tier with #{count} check-ins. #{next_tier}"
 
-    elsif text.match?(/hi|hello|hey|help|what can you/)
-      "Hey#{current_user.first_name.present? ? " #{current_user.first_name}" : ""}! I can help you with:\n" \
+    when /hi|hello|hey|help|what can you/
+      "Hey#{" #{current_user.first_name}" if current_user.first_name.present?}! I can help you with:\n" \
       "- Your check-ins and tier status\n" \
       "- Available rewards and progress\n" \
       "- Class recommendations\n" \
@@ -165,12 +208,27 @@ class MessagesController < ApplicationController
       context_parts << "STUDIO OVERVIEW DATA:\n#{data.to_json}"
     end
 
-    system_prompt = ADMIN_SYSTEM_PROMPT + "\n\nHere is the real data from the studio:\n\n" + context_parts.join("\n\n")
+    system_prompt = "#{ADMIN_SYSTEM_PROMPT}\n\nHere is the real data from the studio:\n\n#{context_parts.join("\n\n")}"
 
     call_openai(system_prompt)
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error("Admin AI error: #{e.message}")
     "Sorry, I had trouble fetching studio data. Please try again."
+  end
+
+  def process_file(file)
+    if file.content_type == "application/pdf"
+      "PDF received: #{file.original_filename}"
+    elsif file.content_type.start_with?("image/")
+      "Image received: #{file.original_filename}"
+    elsif file.content_type.start_with?("audio/")
+      "Audio received: #{file.original_filename}"
+    else
+      "Unsupported file type."
+    end
+  rescue StandardError => e
+    Rails.logger.error("File processing error: #{e.class} - #{e.message}")
+    "Sorry, I had trouble processing that file."
   end
 
   def call_openai(system_prompt)
@@ -185,7 +243,7 @@ class MessagesController < ApplicationController
                .ask(history)
 
     response.content
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error("OpenAI error: #{e.class} - #{e.message}")
     "I'm not sure how to help with that yet. Try asking about your check-ins, rewards, classes, or deals!"
   end
