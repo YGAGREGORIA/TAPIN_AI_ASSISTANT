@@ -54,17 +54,17 @@ module AdminTools
           remaining = reward.required_checkins - ur.progress
           percentage = (ur.progress.to_f / reward.required_checkins * 100).round
 
-          if remaining > 0 && remaining <= 5
-            close_members << {
-              user_id: ur.user.id,
-              name: "#{ur.user.first_name} #{ur.user.last_name}",
-              reward_name: reward.name,
-              progress: ur.progress,
-              required: reward.required_checkins,
-              remaining: remaining,
-              percentage: percentage
-            }
-          end
+          next unless remaining.positive? && remaining <= 5
+
+          close_members << {
+            user_id: ur.user.id,
+            name: "#{ur.user.first_name} #{ur.user.last_name}",
+            reward_name: reward.name,
+            progress: ur.progress,
+            required: reward.required_checkins,
+            remaining: remaining,
+            percentage: percentage
+          }
         end
       end
 

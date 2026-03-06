@@ -9,7 +9,7 @@ module AdminTools
       suggestions = []
 
       inactive = count_inactive_members
-      if inactive > 0
+      if inactive.positive?
         suggestions << {
           target: "inactive_members",
           count: inactive,
@@ -19,7 +19,7 @@ module AdminTools
       end
 
       churn = count_churn_risk_members
-      if churn > 0
+      if churn.positive?
         suggestions << {
           target: "churn_risk_members",
           count: churn,
@@ -29,7 +29,7 @@ module AdminTools
       end
 
       close = count_close_to_reward
-      if close > 0
+      if close.positive?
         suggestions << {
           target: "close_to_reward_members",
           count: close,
@@ -75,7 +75,7 @@ module AdminTools
       @studio.rewards.each do |reward|
         count += UserReward.where(reward: reward, redeemed: false)
                            .joins(:user).where(users: { studio_id: @studio.id })
-                           .select { |ur| reward.required_checkins - ur.progress <= 5 && reward.required_checkins - ur.progress > 0 }
+                           .select { |ur| reward.required_checkins - ur.progress <= 5 && (reward.required_checkins - ur.progress).positive? }
                            .count
       end
       count

@@ -24,7 +24,8 @@ module AdminTools
         {
           name: "get_inactive_members",
           description: "Get a list of studio members who haven't checked in recently",
-          parameters: { days_threshold: { type: "integer", description: "Number of days of inactivity (default: 30)", required: false } }
+          parameters: { days_threshold: { type: "integer", description: "Number of days of inactivity (default: 30)",
+                                          required: false } }
         },
         {
           name: "analyze_churn_risk",
@@ -34,7 +35,8 @@ module AdminTools
         {
           name: "get_member_insights",
           description: "Get detailed insights about a specific member, or find members close to earning rewards",
-          parameters: { user_id: { type: "integer", description: "Specific member ID (optional - omit to see members close to rewards)", required: false } }
+          parameters: { user_id: { type: "integer",
+                                   description: "Specific member ID (optional - omit to see members close to rewards)", required: false } }
         },
         {
           name: "suggest_deal",
