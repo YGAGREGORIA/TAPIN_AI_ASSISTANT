@@ -1,11 +1,46 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["messages", "input", "sendBtn", "suggestions", "welcome", "overlay", "sidebar", "chatTitle"]
+  static targets = [
+    "messages",
+    "input",
+    "sendBtn",
+    "suggestions",
+    "welcome",
+    "overlay",
+    "sidebar",
+    "chatTitle",
+    "fileInput",
+    "fileName",
+    "filePreview"
+  ]
+
   static values = { chatId: Number }
 
-  connect() {
-    this.scrollToBottom()
+connect() {
+  this.scrollToBottom()
+
+  if (this.hasFileInputTarget) {
+    this.fileInputTarget.addEventListener("change", () => {
+      if (!this.hasFilePreviewTarget) return
+
+      const file = this.fileInputTarget.files[0]
+      this.filePreviewTarget.innerHTML = file
+        ? `<div class="small text-muted mt-1"><i class="fas fa-paperclip me-1"></i>${this.escapeHtml(file.name)}</div>`
+        : ""
+    })
+  }
+}
+
+  bindFilePreview() {
+    if (!this.hasFileInputTarget) return
+
+    this.fileInputTarget.addEventListener("change", () => {
+      if (!this.hasFileNameTarget) return
+
+      const file = this.fileInputTarget.files[0]
+      this.fileNameTarget.textContent = file ? file.name : ""
+    })
   }
 
   // Send message from form submit
@@ -13,15 +48,21 @@ export default class extends Controller {
     event.preventDefault()
 
     const message = this.inputTarget.value.trim()
-    if (message === "") return
+    const file = this.hasFileInputTarget ? this.fileInputTarget.files[0] : null
 
-    this.appendUserMessage(message)
+    if (message === "" && !file) return
+
+    this.appendUserMessage(message, file)
     this.inputTarget.value = ""
+    if (this.hasFileInputTarget) this.fileInputTarget.value = ""
+    if (this.hasFilePreviewTarget) this.filePreviewTarget.innerHTML = ""
+    if (this.hasFileNameTarget) this.fileNameTarget.textContent = ""
+
     this.appendTyping()
     this.disableInput()
     this.hideWelcome()
 
-    await this.postMessage(message)
+    await this.postMessage(message, file)
   }
 
   // Send message from suggestion chip click
@@ -31,24 +72,28 @@ export default class extends Controller {
     const message = event.currentTarget.dataset.message
     if (!message) return
 
-    this.appendUserMessage(message)
+    this.appendUserMessage(message, null)
     this.appendTyping()
     this.disableInput()
     this.hideWelcome()
 
-    await this.postMessage(message)
+    await this.postMessage(message, null)
   }
 
   // POST message to server and handle response
-  async postMessage(message) {
+  async postMessage(message, file = null) {
     try {
+      const formData = new FormData()
+      formData.append("message", message || "")
+      if (file) formData.append("file", file)
+
       const response = await fetch(`/chats/${this.chatIdValue}/messages`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content,
+          "Accept": "application/json"
         },
-        body: JSON.stringify({ message: message })
+        body: formData
       })
 
       if (!response.ok) throw new Error("Request failed")
@@ -57,7 +102,6 @@ export default class extends Controller {
       this.removeTyping()
       this.appendAssistantMessage(data.assistant)
 
-      // Update chat title if server renamed it
       if (data.title && this.hasChatTitleTarget) {
         this.chatTitleTarget.textContent = data.title
       }
@@ -70,18 +114,37 @@ export default class extends Controller {
   }
 
   // DOM helpers
-  appendUserMessage(text) {
+  appendUserMessage(text, file = null) {
+    let body = ""
+
+    if (text && file) {
+      body = `
+        <div>${this.escapeHtml(text)}</div>
+        <div class="small mt-1 opacity-75">
+          <i class="fas fa-paperclip me-1"></i>${this.escapeHtml(file.name)}
+        </div>
+      `
+    } else if (text) {
+      body = `<div>${this.escapeHtml(text)}</div>`
+    } else if (file) {
+      body = `
+        <div>
+          <i class="fas fa-paperclip me-1"></i>${this.escapeHtml(file.name)}
+        </div>
+      `
+    }
+
     const html = `
       <div class="d-flex justify-content-end align-items-end gap-2 mb-3">
-        <div class="chat-bubble chat-bubble-user">${this.escapeHtml(text)}</div>
+        <div class="chat-bubble chat-bubble-user">${body}</div>
         <div class="chat-avatar chat-avatar-user">You</div>
       </div>`
+
     this.messagesTarget.insertAdjacentHTML("beforeend", html)
     this.scrollToBottom()
   }
 
   appendAssistantMessage(text) {
-    // Convert newlines to <br> for multi-line responses
     const formatted = this.escapeHtml(text).replace(/\n/g, "<br>")
     const html = `
       <div class="d-flex justify-content-start align-items-end gap-2 mb-3">
@@ -122,6 +185,7 @@ export default class extends Controller {
 
   disableInput() {
     this.inputTarget.disabled = true
+    if (this.hasFileInputTarget) this.fileInputTarget.disabled = true
     if (this.hasSendBtnTarget) {
       this.sendBtnTarget.disabled = true
     }
@@ -129,6 +193,7 @@ export default class extends Controller {
 
   enableInput() {
     this.inputTarget.disabled = false
+    if (this.hasFileInputTarget) this.fileInputTarget.disabled = false
     if (this.hasSendBtnTarget) {
       this.sendBtnTarget.disabled = false
     }

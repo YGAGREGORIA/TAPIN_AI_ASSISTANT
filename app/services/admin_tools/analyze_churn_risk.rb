@@ -18,7 +18,7 @@ module AdminTools
         frequency = if total > 1
                       first_checkin = checkins.minimum(:created_at)
                       span_days = ((last_checkin - first_checkin) / 1.day).round
-                      span_days > 0 ? (span_days.to_f / total).round(1) : 0
+                      span_days.positive? ? (span_days.to_f / total).round(1) : 0
                     else
                       0
                     end

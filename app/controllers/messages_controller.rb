@@ -9,13 +9,27 @@ class MessagesController < ApplicationController
     @chat = current_user.chats.find(params[:chat_id])
 
     user_text = params[:message].to_s.strip
-    return render json: { error: "empty_message" }, status: :unprocessable_entity if user_text.blank?
+    uploaded_file = params[:file]
+
+    if user_text.blank? && uploaded_file.blank?
+      return render json: { error: "empty_message" },
+                    status: :unprocessable_entity
+    end
 
     # save user message
-    Message.create!(role: "user", content: user_text, chat: @chat)
+    user_message = Message.new(
+      role: "user",
+      content: user_text.presence || uploaded_file&.original_filename.to_s,
+      chat: @chat
+    )
 
-    # generate response — admin gets tool-augmented AI, customer gets keyword + AI
-    assistant_text = if current_user.admin?
+    user_message.file.attach(uploaded_file) if uploaded_file.present? && user_message.respond_to?(:file)
+    user_message.save!
+
+    # generate response — file upload, admin, or customer AI
+    assistant_text = if uploaded_file.present?
+                       process_file(uploaded_file)
+                     elsif current_user.admin?
                        generate_admin_response(user_text)
                      else
                        generate_customer_response(user_text)
@@ -25,7 +39,7 @@ class MessagesController < ApplicationController
     Message.create!(role: "assistant", content: assistant_text, chat: @chat)
 
     # Auto-rename chat based on first user message
-    new_title = maybe_rename_chat(user_text)
+    new_title = maybe_rename_chat(user_text.presence || uploaded_file&.original_filename.to_s)
 
     render json: { assistant: assistant_text, title: new_title }
   end
@@ -45,6 +59,30 @@ class MessagesController < ApplicationController
 
   def generate_customer_response(_user_text)
     call_openai(build_customer_prompt)
+  end
+
+  # --- File upload processing ---
+
+  def process_file(file)
+    if file.content_type == "application/pdf"
+      chat = RubyLLM.chat(model: "gpt-4o")
+      response = chat.ask("Please analyze this PDF and tell me what it contains.", with: file.tempfile.path)
+      response.content
+    elsif file.content_type.start_with?("image/")
+      chat = RubyLLM.chat(model: "gpt-4o")
+      response = chat.ask("Describe exactly what you see in this image. If there is text in the image, read it too.",
+                          with: file.tempfile.path)
+      response.content
+    elsif file.content_type.start_with?("audio/")
+      chat = RubyLLM.chat(model: "gpt-4o-audio-preview")
+      response = chat.ask("Please transcribe and summarize this audio.", with: file.tempfile.path)
+      response.content
+    else
+      "Unsupported file type."
+    end
+  rescue StandardError => e
+    Rails.logger.error("File processing error: #{e.class} - #{e.message}")
+    "Sorry, I had trouble processing that file."
   end
 
   # --- Admin flow (detect tool need, fetch data, send to AI) ---
@@ -87,10 +125,10 @@ class MessagesController < ApplicationController
       context_parts << "STUDIO OVERVIEW DATA:\n#{data.to_json}"
     end
 
-    system_prompt = ADMIN_SYSTEM_PROMPT + "\n\nHere is the real data from the studio:\n\n" + context_parts.join("\n\n")
+    system_prompt = "#{ADMIN_SYSTEM_PROMPT}\n\nHere is the real data from the studio:\n\n#{context_parts.join("\n\n")}"
 
     call_openai(system_prompt)
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error("Admin AI error: #{e.message}")
     "Sorry, I had trouble fetching studio data. Please try again."
   end
@@ -189,7 +227,7 @@ class MessagesController < ApplicationController
                .ask(history)
 
     response.content
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error("OpenAI error: #{e.class} - #{e.message}")
     "I'm not sure how to help with that yet. Try asking about your check-ins, rewards, classes, or deals!"
   end
