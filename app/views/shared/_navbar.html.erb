@@ -1,69 +1,67 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+<nav class="navbar navbar-expand-lg tapin-navbar">
   <div class="container-fluid">
-    <%= link_to root_path, class: "navbar-brand d-flex align-items-center gap-2" do %>
-      <span class="fw-semibold">TAPIN AI</span>
+
+    <!-- Logo -->
+    <%= link_to root_path, class: "navbar-brand tapin-brand d-flex align-items-center" do %>
+      <span class="tapin-logo-text">TAPIN<span class="dot">.</span></span>
     <% end %>
 
+    <!-- Mobile toggle -->
     <button
       class="navbar-toggler"
       type="button"
       data-bs-toggle="collapse"
       data-bs-target="#navbarSupportedContent"
-      aria-controls="navbarSupportedContent"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
     >
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+      <!-- Left navigation -->
+      <ul class="navbar-nav me-auto tapin-nav-links">
+
         <li class="nav-item">
-          <%= link_to "Home", root_path, class: "nav-link #{'active' if current_page?(root_path)}" %>
+          <%= link_to "Home", root_path,
+          class: "nav-link #{'active' if current_page?(root_path)}" %>
         </li>
 
         <li class="nav-item">
-          <%= link_to "AI Assistant", chats_path, class: "nav-link #{'active' if request.path.start_with?('/chats')}" %>
+          <%= link_to "AI Assistant", chats_path,
+          class: "nav-link #{'active' if request.path.start_with?('/chats')}" %>
         </li>
+
       </ul>
 
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-        <% if user_signed_in? %>
-          <li class="nav-item dropdown">
-            <a
-              class="nav-link dropdown-toggle d-flex align-items-center gap-2"
-              href="#"
-              id="navbarDropdown"
-              role="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              <span class="badge text-bg-secondary"><%= current_user.email.first(2).upcase %></span>
-              <span class="d-none d-lg-inline"><%= current_user.email %></span>
-            </a>
+      <!-- Right navigation -->
+      <ul class="navbar-nav ms-auto align-items-center">
 
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-              <li>
-                <%= link_to "My chats", chats_path, class: "dropdown-item" %>
-              </li>
+  <% if user_signed_in? %>
 
-              <li><hr class="dropdown-divider"></li>
-
-              <li>
-                <%= button_to "Log out", destroy_user_session_path, method: :delete, class: "dropdown-item" %>
-              </li>
-            </ul>
-          </li>
+    <li class="nav-item">
+      <%= button_to "Log out",
+      destroy_user_session_path,
+      method: :delete,
+      class: "tapin-logout-btn" %>
+    </li>
         <% else %>
-          <li class="nav-item">
-            <%= link_to "Sign in", new_user_session_path, class: "nav-link" %>
-          </li>
 
-          <li class="nav-item">
-            <%= link_to "Sign up", new_user_registration_path, class: "btn btn-primary ms-lg-2" %>
-          </li>
+        <li class="nav-item">
+          <%= link_to "Sign in",
+          new_user_session_path,
+          class: "nav-link" %>
+        </li>
+
+        <li class="nav-item ms-lg-3">
+          <%= link_to "Sign up",
+          new_user_registration_path,
+          class: "tapin-btn-primary" %>
+        </li>
+
         <% end %>
+
       </ul>
+
     </div>
   </div>
 </nav>

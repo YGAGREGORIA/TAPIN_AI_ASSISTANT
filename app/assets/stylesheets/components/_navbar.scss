@@ -1,12 +1,91 @@
-.navbar-lewagon {
-  justify-content: space-between;
-  background: white;
+.tapin-navbar {
+  background: #2B2118; // Espresso brown
+  padding: 14px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-.navbar-lewagon .navbar-collapse {
-  flex-grow: 0;
+/* Logo */
+
+.tapin-brand {
+  font-weight: 700;
+  font-size: 22px;
+  color: #F6F1EB; // oat light text
 }
 
-.navbar-lewagon .navbar-brand img {
-  width: 40px;
+.tapin-logo-text .dot {
+  color: #E1B84A; // mustard accent
+}
+
+/* Navigation links */
+
+.tapin-nav-links .nav-link {
+  color: #E9E1D8;
+  font-weight: 500;
+  margin-right: 22px;
+  transition: all 0.2s ease;
+}
+
+.tapin-nav-links .nav-link:hover {
+  color: #E1B84A; // mustard hover
+}
+
+.tapin-nav-links .nav-link.active {
+  color: #E1B84A;
+  font-weight: 600;
+}
+
+/* Primary Button */
+
+.tapin-btn-primary {
+  background: #E1B84A;
+  color: #2B2118;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tapin-btn-primary:hover {
+  background: #d2a63c;
+  color: #2B2118;
+}
+
+/* Avatar */
+
+.tapin-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #E1B84A;
+  color: #2B2118;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Dropdown */
+
+.tapin-dropdown {
+  background: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px;
+  margin-top: 10px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.15);
+}
+.tapin-logout-btn {
+  background:  #E1B84A;
+  border: 1px solid #E1B84A;
+  color:  #2B2118;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.tapin-logout-btn:hover {
+  background: #E1B84A;
+  color:  #ffffff;
 }
