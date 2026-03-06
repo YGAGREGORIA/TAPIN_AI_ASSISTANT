@@ -1,0 +1,51 @@
+.auth-wrapper {
+  min-height: calc(100vh - 80px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: $light;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+
+  padding: 2rem;
+
+  border-radius: 16px;
+  border: 1px solid darken($light, 10%);
+
+  background: white;
+}
+
+.auth-header {
+  margin-bottom: 1.5rem;
+}
+
+.auth-title {
+  font-family: $headers-font;
+  color: $secondary;
+  margin-bottom: 4px;
+}
+
+.auth-subtitle {
+  font-size: 0.9rem;
+  color: lighten($secondary, 35%);
+}
+
+.auth-input {
+  border-radius: 10px !important;
+}
+
+.auth-button {
+  margin-top: 8px;
+  border-radius: 30px;
+}
+
+.auth-links {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
