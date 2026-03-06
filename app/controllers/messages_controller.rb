@@ -1,17 +1,9 @@
 class MessagesController < ApplicationController
   before_action :authenticate_user!
 
-  CUSTOMER_SYSTEM_PROMPT = <<~PROMPT
-    You are the TAPIN AI assistant helping users with
-    check-ins, rewards, loyalty tiers, classes and deals.
-  PROMPT
-
-  ADMIN_SYSTEM_PROMPT = <<~PROMPT
-    You are TapIn AI, a helpful assistant for fitness studio administrators.
-    You help studio owners understand their members, track engagement, and improve retention.
-    Be concise, friendly, and actionable in your responses.
-    Always base your answers on the data provided — never make up numbers.
-  PROMPT
+  PROMPT_DIR = Rails.root.join("app", "prompts")
+  CUSTOMER_SYSTEM_PROMPT = PROMPT_DIR.join("customer_system_prompt.txt").read.freeze
+  ADMIN_SYSTEM_PROMPT = PROMPT_DIR.join("admin_system_prompt.txt").read.freeze
 
   def create
     @chat = current_user.chats.find(params[:chat_id])
@@ -49,80 +41,10 @@ class MessagesController < ApplicationController
     title
   end
 
-  # --- Customer flow (keyword matching + RubyLLM fallback) ---
+  # --- Customer flow (all messages go through AI) ---
 
-  def generate_customer_response(user_text)
-    text = user_text.downcase
-
-    if text.match?(/check.?in|visit|attendance|how many/)
-      count = CheckIn.where(user: current_user).count
-      studio = current_user.studio
-      tier = case count
-             when 0..9 then "Member"
-             when 10..24 then "Bronze"
-             when 25..49 then "Silver"
-             else "Gold"
-             end
-      "You have #{count} check-ins! Your current tier is #{tier}."
-
-    elsif text.match?(/reward|unlock|earn|points|badge/)
-      user_rewards = current_user.user_rewards.includes(:reward)
-      if user_rewards.any?
-        lines = user_rewards.map do |ur|
-          status = ur.redeemed? ? "Unlocked" : "#{ur.progress}/#{ur.reward.required_checkins}"
-          "#{ur.reward.name}: #{status}"
-        end
-        "Your rewards:\n#{lines.join("\n")}"
-      else
-        rewards = Reward.limit(3).pluck(:name)
-        "You can unlock rewards like: #{rewards.join(', ')}."
-      end
-
-    elsif text.match?(/class|recommend|workout|exercise|train/)
-      classes = Course.limit(5).pluck(:name, :category)
-      lines = classes.map { |name, cat| "#{name} (#{cat})" }
-      "Here are some classes you might enjoy:\n#{lines.join("\n")}"
-
-    elsif text.match?(/deal|offer|discount|promo|special/)
-      deals = Deal.where(active: true).pluck(:title, :description)
-      if deals.any?
-        lines = deals.map { |title, desc| "#{title} — #{desc}" }
-        "Active deals:\n#{lines.join("\n")}"
-      else
-        "No active deals right now, but check back soon!"
-      end
-
-    elsif text.match?(/schedule|upcoming|when|time/)
-      classes = Course.limit(5).pluck(:name)
-      "Upcoming classes: #{classes.join(', ')}."
-
-    elsif text.match?(/tier|level|status|rank/)
-      count = CheckIn.where(user: current_user).count
-      tier = case count
-             when 0..9 then "Member"
-             when 10..24 then "Bronze"
-             when 25..49 then "Silver"
-             else "Gold"
-             end
-      next_tier = case tier
-                  when "Member" then "#{10 - count} more check-ins to reach Bronze"
-                  when "Bronze" then "#{25 - count} more check-ins to reach Silver"
-                  when "Silver" then "#{50 - count} more check-ins to reach Gold"
-                  else "You've reached the highest tier!"
-                  end
-      "You're currently at #{tier} tier with #{count} check-ins. #{next_tier}"
-
-    elsif text.match?(/hi|hello|hey|help|what can you/)
-      "Hey#{current_user.first_name.present? ? " #{current_user.first_name}" : ""}! I can help you with:\n" \
-      "- Your check-ins and tier status\n" \
-      "- Available rewards and progress\n" \
-      "- Class recommendations\n" \
-      "- Current deals and offers\n" \
-      "Just ask me anything!"
-
-    else
-      call_openai(CUSTOMER_SYSTEM_PROMPT)
-    end
+  def generate_customer_response(_user_text)
+    call_openai(build_customer_prompt)
   end
 
   # --- Admin flow (detect tool need, fetch data, send to AI) ---
@@ -171,6 +93,88 @@ class MessagesController < ApplicationController
   rescue => e
     Rails.logger.error("Admin AI error: #{e.message}")
     "Sorry, I had trouble fetching studio data. Please try again."
+  end
+
+  def build_customer_prompt
+    studio = @chat.studio
+    prompt = CUSTOMER_SYSTEM_PROMPT.dup
+
+    # Studio info
+    prompt << "\n\n--- STUDIO INFORMATION ---\n"
+    prompt << "Name: #{studio.name}\n"
+    prompt << "Address: #{studio.address}\n" if studio.address.present?
+    prompt << "Phone: #{studio.phone}\n" if studio.phone.present?
+    prompt << "Email: #{studio.email}\n" if studio.email.present?
+    prompt << "Opening Hours: #{studio.opening_hours}\n" if studio.opening_hours.present?
+    prompt << "Facilities: #{studio.facilities}\n" if studio.facilities.present?
+    prompt << "Pricing: #{studio.pricing}\n" if studio.pricing.present?
+
+    # Courses
+    courses = Course.where(studio: studio)
+    if courses.any?
+      prompt << "\n--- CLASSES ---\n"
+      courses.each do |c|
+        prompt << "\n#{c.name} (#{c.category})\n"
+        prompt << "  Schedule: #{c.schedule}\n" if c.schedule.present?
+        prompt << "  Duration: #{c.duration} minutes\n" if c.duration.present?
+        prompt << "  Difficulty: #{c.difficulty}\n" if c.difficulty.present?
+        prompt << "  Description: #{c.description}\n" if c.description.present?
+        prompt << "  Benefits: #{c.benefits}\n" if c.benefits.present?
+        prompt << "  What to bring: #{c.what_to_bring}\n" if c.what_to_bring.present?
+        prompt << "  What to wear: #{c.what_to_wear}\n" if c.what_to_wear.present?
+        prompt << "  Recovery tips: #{c.recovery_tips}\n" if c.recovery_tips.present?
+        prompt << "  Best for: #{c.best_for}\n" if c.best_for.present?
+      end
+    end
+
+    # Active deals
+    deals = Deal.where(studio: studio, active: true)
+    if deals.any?
+      prompt << "\n--- CURRENT DEALS ---\n"
+      deals.each do |d|
+        prompt << "#{d.title}: #{d.description}\n"
+      end
+    end
+
+    # Rewards
+    rewards = Reward.where(studio: studio)
+    if rewards.any?
+      prompt << "\n--- REWARDS PROGRAM ---\n"
+      rewards.each do |r|
+        prompt << "#{r.name} (#{r.reward_type}): #{r.required_checkins} check-ins required\n"
+      end
+    end
+
+    # Member-specific context
+    checkin_count = CheckIn.where(user: current_user).count
+    tier = case checkin_count
+           when 0..9 then "Member"
+           when 10..24 then "Bronze"
+           when 25..49 then "Silver"
+           else "Gold"
+           end
+    next_tier = case tier
+                when "Member" then "#{10 - checkin_count} more check-ins to reach Bronze"
+                when "Bronze" then "#{25 - checkin_count} more check-ins to reach Silver"
+                when "Silver" then "#{50 - checkin_count} more check-ins to reach Gold"
+                else "They've reached the highest tier!"
+                end
+
+    prompt << "\n--- THIS MEMBER'S INFO ---\n"
+    prompt << "Name: #{current_user.first_name} #{current_user.last_name}\n"
+    prompt << "Check-ins: #{checkin_count}\n"
+    prompt << "Tier: #{tier} (#{next_tier})\n"
+
+    user_rewards = current_user.user_rewards.includes(:reward)
+    if user_rewards.any?
+      prompt << "Reward progress:\n"
+      user_rewards.each do |ur|
+        status = ur.redeemed? ? "Unlocked" : "#{ur.progress}/#{ur.reward.required_checkins}"
+        prompt << "  #{ur.reward.name}: #{status}\n"
+      end
+    end
+
+    prompt
   end
 
   def call_openai(system_prompt)
