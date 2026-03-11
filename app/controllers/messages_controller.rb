@@ -1,17 +1,9 @@
 class MessagesController < ApplicationController
   before_action :authenticate_user!
 
-  CUSTOMER_SYSTEM_PROMPT = <<~PROMPT
-    You are the TAPIN AI assistant helping users with
-    check-ins, rewards, loyalty tiers, classes and deals.
-  PROMPT
-
-  ADMIN_SYSTEM_PROMPT = <<~PROMPT
-    You are TapIn AI, a helpful assistant for fitness studio administrators.
-    You help studio owners understand their members, track engagement, and improve retention.
-    Be concise, friendly, and actionable in your responses.
-    Always base your answers on the data provided — never make up numbers.
-  PROMPT
+  PROMPT_DIR = Rails.root.join("app", "prompts")
+  CUSTOMER_SYSTEM_PROMPT = PROMPT_DIR.join("customer_system_prompt.txt").read.freeze
+  ADMIN_SYSTEM_PROMPT = PROMPT_DIR.join("admin_system_prompt.txt").read.freeze
 
   def create
     @chat = current_user.chats.find(params[:chat_id])
@@ -25,7 +17,6 @@ class MessagesController < ApplicationController
     end
 
     # save user message
-
     user_message = Message.new(
       role: "user",
       content: user_text.presence || uploaded_file&.original_filename.to_s,
@@ -33,11 +24,9 @@ class MessagesController < ApplicationController
     )
 
     user_message.file.attach(uploaded_file) if uploaded_file.present? && user_message.respond_to?(:file)
-
     user_message.save!
 
-    # generate response — admin gets tool-augmented AI, customer gets keyword + AI
-
+    # generate response — file upload, admin, or customer AI
     assistant_text = if uploaded_file.present?
                        process_file(uploaded_file)
                      elsif current_user.admin?
@@ -46,36 +35,10 @@ class MessagesController < ApplicationController
                        generate_customer_response(user_text)
                      end
 
-    def process_file(file)
-      if file.content_type == "application/pdf"
-        chat = RubyLLM.chat(model: "gpt-4o")
-        response = chat.ask("Please analyze this PDF and tell me what it contains.", with: file.tempfile.path)
-        response.content
-
-      elsif file.content_type.start_with?("image/")
-        chat = RubyLLM.chat(model: "gpt-4o")
-        response = chat.ask("Describe exactly what you see in this image. If there is text in the image, read it too.",
-                            with: file.tempfile.path)
-        response.content
-
-      elsif file.content_type.start_with?("audio/")
-        chat = RubyLLM.chat(model: "gpt-4o-audio-preview")
-        response = chat.ask("Please transcribe and summarize this audio.", with: file.tempfile.path)
-        response.content
-
-      else
-        "Unsupported file type."
-      end
-    rescue StandardError => e
-      Rails.logger.error("File processing error: #{e.class} - #{e.message}")
-      "Sorry, I had trouble processing that file."
-    end
-
     # save assistant message
     Message.create!(role: "assistant", content: assistant_text, chat: @chat)
 
     # Auto-rename chat based on first user message
-
     new_title = maybe_rename_chat(user_text.presence || uploaded_file&.original_filename.to_s)
 
     render json: { assistant: assistant_text, title: new_title }
@@ -92,80 +55,34 @@ class MessagesController < ApplicationController
     title
   end
 
-  # --- Customer flow (keyword matching + RubyLLM fallback) ---
-  def generate_customer_response(user_text)
-    text = user_text.downcase
+  # --- Customer flow (all messages go through AI) ---
 
-    case text
-    when /check.?in|visit|attendance|how many/
-      count = CheckIn.where(user: current_user).count
-      current_user.studio
-      tier = case count
-             when 0..9 then "Member"
-             when 10..24 then "Bronze"
-             when 25..49 then "Silver"
-             else "Gold"
-             end
-      "You have #{count} check-ins! Your current tier is #{tier}."
+  def generate_customer_response(_user_text)
+    call_openai(build_customer_prompt)
+  end
 
-    when /reward|unlock|earn|points|badge/
-      user_rewards = current_user.user_rewards.includes(:reward)
-      if user_rewards.any?
-        lines = user_rewards.map do |ur|
-          status = ur.redeemed? ? "Unlocked" : "#{ur.progress}/#{ur.reward.required_checkins}"
-          "#{ur.reward.name}: #{status}"
-        end
-        "Your rewards:\n#{lines.join("\n")}"
-      else
-        rewards = Reward.limit(3).pluck(:name)
-        "You can unlock rewards like: #{rewards.join(', ')}."
-      end
+  # --- File upload processing ---
 
-    when /class|recommend|workout|exercise|train/
-      classes = Course.limit(5).pluck(:name, :category)
-      lines = classes.map { |name, cat| "#{name} (#{cat})" }
-      "Here are some classes you might enjoy:\n#{lines.join("\n")}"
-
-    when /deal|offer|discount|promo|special/
-      deals = Deal.where(active: true).pluck(:title, :description)
-      if deals.any?
-        lines = deals.map { |title, desc| "#{title} — #{desc}" }
-        "Active deals:\n#{lines.join("\n")}"
-      else
-        "No active deals right now, but check back soon!"
-      end
-
-    when /schedule|upcoming|when|time/
-      classes = Course.limit(5).pluck(:name)
-      "Upcoming classes: #{classes.join(', ')}."
-
-    when /tier|level|status|rank/
-      count = CheckIn.where(user: current_user).count
-      tier = case count
-             when 0..9 then "Member"
-             when 10..24 then "Bronze"
-             when 25..49 then "Silver"
-             else "Gold"
-             end
-      next_tier = case tier
-                  when "Member" then "#{10 - count} more check-ins to reach Bronze"
-                  when "Bronze" then "#{25 - count} more check-ins to reach Silver"
-                  when "Silver" then "#{50 - count} more check-ins to reach Gold"
-                  else "You've reached the highest tier!"
-                  end
-      "You're currently at #{tier} tier with #{count} check-ins. #{next_tier}"
-
-    when /hi|hello|hey|help|what can you/
-      "Hey#{" #{current_user.first_name}" if current_user.first_name.present?}! I can help you with:\n" \
-      "- Your check-ins and tier status\n" \
-      "- Available rewards and progress\n" \
-      "- Class recommendations\n" \
-      "- Current deals and offers\n" \
-      "Just ask me anything!"
-
+  def process_file(file)
+    if file.content_type == "application/pdf"
+      chat = RubyLLM.chat(model: "gpt-4o")
+      response = chat.ask("Please analyze this PDF and tell me what it contains.", with: file.tempfile.path)
+      response.content
+    elsif file.content_type.start_with?("image/")
+      chat = RubyLLM.chat(model: "gpt-4o")
+      response = chat.ask("Describe exactly what you see in this image. If there is text in the image, read it too.",
+                          with: file.tempfile.path)
+      response.content
+    elsif file.content_type.start_with?("audio/")
+      chat = RubyLLM.chat(model: "gpt-4o-audio-preview")
+      response = chat.ask("Please transcribe and summarize this audio.", with: file.tempfile.path)
+      response.content
     else
-      call_openai(CUSTOMER_SYSTEM_PROMPT)
+      "Unsupported file type."
     end
+  rescue StandardError => e
+    Rails.logger.error("File processing error: #{e.class} - #{e.message}")
+    "Sorry, I had trouble processing that file."
   end
 
   # --- Admin flow (detect tool need, fetch data, send to AI) ---
@@ -216,33 +133,105 @@ class MessagesController < ApplicationController
     "Sorry, I had trouble fetching studio data. Please try again."
   end
 
-  def process_file(file)
-    if file.content_type == "application/pdf"
-      "PDF received: #{file.original_filename}"
-    elsif file.content_type.start_with?("image/")
-      "Image received: #{file.original_filename}"
-    elsif file.content_type.start_with?("audio/")
-      "Audio received: #{file.original_filename}"
-    else
-      "Unsupported file type."
+  def build_customer_prompt
+    studio = @chat.studio
+    prompt = CUSTOMER_SYSTEM_PROMPT.dup
+
+    # Studio info
+    prompt << "\n\n--- STUDIO INFORMATION ---\n"
+    prompt << "Name: #{studio.name}\n"
+    prompt << "Address: #{studio.address}\n" if studio.address.present?
+    prompt << "Phone: #{studio.phone}\n" if studio.phone.present?
+    prompt << "Email: #{studio.email}\n" if studio.email.present?
+    prompt << "Opening Hours: #{studio.opening_hours}\n" if studio.opening_hours.present?
+    prompt << "Facilities: #{studio.facilities}\n" if studio.facilities.present?
+    prompt << "Pricing: #{studio.pricing}\n" if studio.pricing.present?
+
+    # Courses
+    courses = Course.where(studio: studio)
+    if courses.any?
+      prompt << "\n--- CLASSES ---\n"
+      courses.each do |c|
+        prompt << "\n#{c.name} (#{c.category})\n"
+        prompt << "  Schedule: #{c.schedule}\n" if c.schedule.present?
+        prompt << "  Duration: #{c.duration} minutes\n" if c.duration.present?
+        prompt << "  Difficulty: #{c.difficulty}\n" if c.difficulty.present?
+        prompt << "  Description: #{c.description}\n" if c.description.present?
+        prompt << "  Benefits: #{c.benefits}\n" if c.benefits.present?
+        prompt << "  What to bring: #{c.what_to_bring}\n" if c.what_to_bring.present?
+        prompt << "  What to wear: #{c.what_to_wear}\n" if c.what_to_wear.present?
+        prompt << "  Recovery tips: #{c.recovery_tips}\n" if c.recovery_tips.present?
+        prompt << "  Best for: #{c.best_for}\n" if c.best_for.present?
+      end
     end
-  rescue StandardError => e
-    Rails.logger.error("File processing error: #{e.class} - #{e.message}")
-    "Sorry, I had trouble processing that file."
+
+    # Active deals
+    deals = Deal.where(studio: studio, active: true)
+    if deals.any?
+      prompt << "\n--- CURRENT DEALS ---\n"
+      deals.each do |d|
+        prompt << "#{d.title}: #{d.description}\n"
+      end
+    end
+
+    # Rewards
+    rewards = Reward.where(studio: studio)
+    if rewards.any?
+      prompt << "\n--- REWARDS PROGRAM ---\n"
+      rewards.each do |r|
+        prompt << "#{r.name} (#{r.reward_type}): #{r.required_checkins} check-ins required\n"
+      end
+    end
+
+    # Member-specific context
+    checkin_count = CheckIn.where(user: current_user).count
+    tier = case checkin_count
+           when 0..9 then "Member"
+           when 10..24 then "Bronze"
+           when 25..49 then "Silver"
+           else "Gold"
+           end
+    next_tier = case tier
+                when "Member" then "#{10 - checkin_count} more check-ins to reach Bronze"
+                when "Bronze" then "#{25 - checkin_count} more check-ins to reach Silver"
+                when "Silver" then "#{50 - checkin_count} more check-ins to reach Gold"
+                else "They've reached the highest tier!"
+                end
+
+    prompt << "\n--- THIS MEMBER'S INFO ---\n"
+    prompt << "Name: #{current_user.first_name} #{current_user.last_name}\n"
+    prompt << "Check-ins: #{checkin_count}\n"
+    prompt << "Tier: #{tier} (#{next_tier})\n"
+
+    user_rewards = current_user.user_rewards.includes(:reward)
+    if user_rewards.any?
+      prompt << "Reward progress:\n"
+      user_rewards.each do |ur|
+        status = ur.redeemed? ? "Unlocked" : "#{ur.progress}/#{ur.reward.required_checkins}"
+        prompt << "  #{ur.reward.name}: #{status}\n"
+      end
+    end
+
+    prompt
   end
 
   def call_openai(system_prompt)
-    ruby_llm_chat = RubyLLM.chat(model: "gpt-4.1-mini")
+    Timeout.timeout(10) do
+      ruby_llm_chat = RubyLLM.chat(model: "gpt-4.1-mini")
 
-    history = @chat.messages.order(:created_at).map do |m|
-      { role: m.role, content: m.content }
+      history = @chat.messages.order(:created_at).map do |m|
+        { role: m.role, content: m.content }
+      end
+
+      response = ruby_llm_chat
+                 .with_instructions(system_prompt)
+                 .ask(history)
+
+      response.content
     end
-
-    response = ruby_llm_chat
-               .with_instructions(system_prompt)
-               .ask(history)
-
-    response.content
+  rescue Timeout::Error
+    Rails.logger.error("OpenAI timeout: request exceeded 10 seconds")
+    "Sorry, that took too long! Please try again."
   rescue StandardError => e
     Rails.logger.error("OpenAI error: #{e.class} - #{e.message}")
     "I'm not sure how to help with that yet. Try asking about your check-ins, rewards, classes, or deals!"

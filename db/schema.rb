@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_113226) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -35,11 +35,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
   end
 
   create_table "courses", force: :cascade do |t|
+    t.text "benefits"
+    t.text "best_for"
     t.string "category"
     t.datetime "created_at", null: false
+    t.text "description"
+    t.string "difficulty"
+    t.integer "duration"
     t.string "name"
+    t.text "recovery_tips"
+    t.string "schedule"
     t.bigint "studio_id", null: false
     t.datetime "updated_at", null: false
+    t.text "what_to_bring"
+    t.text "what_to_wear"
     t.index ["studio_id"], name: "index_courses_on_studio_id"
   end
 
@@ -76,10 +85,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_04_123109) do
   end
 
   create_table "studios", force: :cascade do |t|
+    t.string "address"
     t.datetime "created_at", null: false
+    t.string "email"
+    t.text "facilities"
     t.text "location"
     t.string "name"
+    t.text "opening_hours"
     t.string "owner_email"
+    t.string "phone"
+    t.text "pricing"
     t.datetime "updated_at", null: false
   end
 
